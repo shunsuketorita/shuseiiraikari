@@ -1979,13 +1979,13 @@ textarea { resize: vertical; min-height: 56px; }
       var line = typeLabel + (style && scoreTypeVal !== 'FT' ? '(' + style + ')' : '') + ' / ' + result;
       if (fastbreak === 'ファストブレイクあり') line += ' / ファストブレイク';
       var assist = getRosterVal(panel, 'f-scoreAssist');
-      if (assist) line += '\nアシスト: ' + fmtPlayer(assist);
+      if (assist && assist !== 'アシストなし') line += '\nアシスト: ' + fmtPlayer(assist);
       return line;
     }
     if (type === 'foul') {
       var ft = getVal(panel, 'f-foulType');
       var on = getRosterVal(panel, 'f-foulOn');
-      return ft + (on ? '(相手 #' + on + ')' : '');
+      return ft + (on ? '(相手 ' + fmtPlayer(on) + ')' : '');
     }
     if (type === 'turnover') {
       var tt = getVal(panel, 'f-turnoverType');
@@ -2140,10 +2140,10 @@ textarea { resize: vertical; min-height: 56px; }
           var afterIn = readMulti('modSubAfterIn' + cap + 'Multi');
           var beforeOut = readMulti('modSubBeforeOut' + cap + 'Multi');
           var afterOut = readMulti('modSubAfterOut' + cap + 'Multi');
-          if (afterIn.length && !sameSet(afterIn, beforeIn)) {
+          if (!sameSet(afterIn, beforeIn)) {
             lines.push(teamLabel + 'IN選手: ' + fmtList(beforeIn) + ' → ' + fmtList(afterIn));
           }
-          if (afterOut.length && !sameSet(afterOut, beforeOut)) {
+          if (!sameSet(afterOut, beforeOut)) {
             lines.push(teamLabel + 'OUT選手: ' + fmtList(beforeOut) + ' → ' + fmtList(afterOut));
           }
         };
@@ -2186,8 +2186,8 @@ textarea { resize: vertical; min-height: 56px; }
         }
         var mBeforeStyle = val('modMultiBeforeShotStyle');
         var mAfterStyle = val('modMultiAfterShotStyle');
-        if (mAfterStyle && mAfterStyle !== mBeforeStyle) {
-          lines.push('シュート種類: ' + (mBeforeStyle || '指定なし') + ' → ' + mAfterStyle);
+        if (mAfterStyle !== mBeforeStyle) {
+          lines.push('シュート種類: ' + (mBeforeStyle || '指定なし') + ' → ' + (mAfterStyle || '指定なし'));
         }
         var mBeforeFB = val('modMultiBeforeFastbreak');
         var mAfterFB = val('modMultiAfterFastbreak');
@@ -2376,8 +2376,9 @@ textarea { resize: vertical; min-height: 56px; }
     visible.forEach(function (entry) {
       var item = entry.item;
       var idx = entry.idx;
+      var key = item.id != null ? item.id : idx;
       var isDone = !!(item.sent && item.confirmed);
-      var isMinimized = isDone && !historyExpandedOverride[idx];
+      var isMinimized = isDone && !historyExpandedOverride[key];
 
       if (isMinimized) {
         var miniRow = document.createElement('div');
@@ -2399,7 +2400,7 @@ textarea { resize: vertical; min-height: 56px; }
         expandB.type = 'button';
         expandB.textContent = '展開';
         expandB.addEventListener('click', function () {
-          historyExpandedOverride[idx] = true;
+          historyExpandedOverride[key] = true;
           renderHistory();
         });
         miniRow.appendChild(expandB);
@@ -2476,7 +2477,7 @@ textarea { resize: vertical; min-height: 56px; }
         collapseB.type = 'button';
         collapseB.textContent = '折りたたむ';
         collapseB.addEventListener('click', function () {
-          delete historyExpandedOverride[idx];
+          delete historyExpandedOverride[key];
           renderHistory();
         });
         actions.appendChild(collapseB);
@@ -2564,7 +2565,7 @@ textarea { resize: vertical; min-height: 56px; }
     outputEl.classList.remove('output-empty');
 
     var list = loadHistory();
-    list.unshift({ text: result.text, team: result.team, teamName: result.teamName, period: result.period });
+    list.unshift({ id: Date.now() + '_' + Math.random().toString(36).slice(2), text: result.text, team: result.team, teamName: result.teamName, period: result.period });
     saveHistory(list);
     renderHistory();
 
@@ -2659,7 +2660,7 @@ textarea { resize: vertical; min-height: 56px; }
   function hasGenuineTurnoverKeyword(desc) {
     var idx = desc.indexOf('ターンオーバー');
     while (idx !== -1) {
-      if (desc.substring(Math.max(0, idx - 2), idx) !== 'オフ') return true;
+      if (desc.substring(Math.max(0, idx - 5), idx) !== 'オフェンス') return true;
       idx = desc.indexOf('ターンオーバー', idx + 1);
     }
     return false;
@@ -2765,11 +2766,16 @@ textarea { resize: vertical; min-height: 56px; }
       if (!modAfterClockOpen) syncAfterClockDefault();
     }
 
-    if (parsed.jersey && parsed.team && parsed.category !== 'timeout') {
+    if (parsed.jersey && parsed.team && parsed.category !== 'timeout' && parsed.category !== 'assist') {
       clickRosterPick('modPlayer', parsed.jersey);
     }
 
-    if (parsed.category === 'score') {
+    if (parsed.category === 'assist') {
+      if (parsed.jersey) {
+        clickRosterPick('modBeforePlayer', parsed.jersey);
+        clickRosterPick('modAfterPlayer', parsed.jersey);
+      }
+    } else if (parsed.category === 'score') {
       if (parsed.jersey && parsed.team) clickRosterPick('modMultiBeforePlayer', parsed.jersey);
       if (parsed.detail.position) clickSegButton('modMultiBeforePositionSeg', parsed.detail.position);
       if (parsed.detail.made !== undefined) clickSegButton('modMultiBeforeResultSeg', parsed.detail.made ? 'カウント' : 'アウト');
