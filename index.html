@@ -497,7 +497,7 @@ textarea { resize: vertical; min-height: 56px; }
       <ol>
         <li>「チーム名・背番号」に、ホーム/アウェイのチーム名と選手の背番号を登録します(最初に一度だけ)。</li>
         <li>「ログ修正」「ログ挿入」「ログ削除」から、今回やりたいことを選びます。</li>
-        <li>「ログ修正」の場合は、FLSのACTION LOGなどから対象プレーの行をコピーして「FLSのプレイバイプレイを貼り付けて自動入力」欄に貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(間違っている項目だけ後から直してください)。</li>
+        <li>FLSのACTION LOGなどから対象プレーの行をコピーして「FLSのプレイバイプレイを貼り付けて自動入力」欄に貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
         <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
         <li>画面下の「テンプレ文を作成してコピー」を押すと、文章が自動で作られてコピーされます。</li>
@@ -574,6 +574,13 @@ textarea { resize: vertical; min-height: 56px; }
 
       <div class="panel content-panel-wrap" id="panelAWrap">
         <p class="section-label" id="contentLabelA">元の内容(修正前)</p>
+        <div class="row">
+          <label for="panelAPasteInput">FLSのプレイバイプレイを貼り付けて自動入力</label>
+          <textarea id="panelAPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
+          <button class="theme-toggle" id="panelAPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
+          <button class="theme-toggle" id="panelAPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
+          <p class="section-sub" id="panelAPasteResult" style="margin-top:6px;"></p>
+        </div>
         <div class="content-panel" id="panelA">
           <div class="row">
             <label for="f-playType">プレーの種類</label>
@@ -2831,6 +2838,54 @@ textarea { resize: vertical; min-height: 56px; }
     }
   }
 
+  var PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE = {
+    score: 'score', foul: 'foul', turnover: 'turnover', substitution: 'substitution', timeout: 'timeout',
+    rebound: 'other', block: 'other', assist: 'other'
+  };
+
+  function applyParsedPlayToPanelA(parsed) {
+    var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
+    var playTypeSel = document.getElementById('f-playType');
+    playTypeSel.value = playType;
+    playTypeSel.dispatchEvent(new Event('change'));
+
+    if (parsed.clock) {
+      clockMinSel.value = parsed.clock.min;
+      clockSecSel.value = parsed.clock.sec;
+    }
+
+    if (playType === 'timeout') {
+      if (parsed.team) clickSegButton('f-timeoutTeamSeg', parsed.team);
+    } else {
+      if (parsed.team) clickSegButton('panelATeamSeg', parsed.team);
+      if (parsed.jersey && parsed.team) clickRosterPick('panelAPlayer', parsed.jersey);
+    }
+
+    if (playType === 'score') {
+      if (parsed.detail.position) clickSegButton('f-scoreTypeSeg', parsed.detail.position);
+      if (parsed.detail.made !== undefined) clickSegButton('f-scoreResultSeg', parsed.detail.made ? 'カウント' : 'アウト');
+      if (parsed.detail.style) {
+        var styleSel = document.getElementById('f-scoreShotStyle');
+        if (styleSel) styleSel.value = parsed.detail.style;
+      }
+      if (parsed.detail.fastbreak) {
+        var fbBtn = document.querySelector('#panelA .f-scoreFastbreak button[data-val="ファストブレイクあり"]');
+        if (fbBtn) fbBtn.click();
+      }
+    } else if (playType === 'foul' && parsed.detail.foulType) {
+      var foulSel = document.getElementById('f-foulType');
+      if (foulSel) foulSel.value = parsed.detail.foulType;
+    } else if (playType === 'turnover' && parsed.detail.turnoverType) {
+      var toSel = document.getElementById('f-turnoverType');
+      if (toSel) toSel.value = parsed.detail.turnoverType;
+    } else if (playType === 'other') {
+      var noteEl = document.getElementById('f-otherNote');
+      if (noteEl) noteEl.value = CATEGORY_LABELS[parsed.category] || parsed.category;
+    }
+
+    updatePanelAPlayerRequirement();
+  }
+
   document.getElementById('modPasteBtn').addEventListener('click', function () {
     var text = document.getElementById('modPasteInput').value;
     var resultEl = document.getElementById('modPasteResult');
@@ -2850,6 +2905,29 @@ textarea { resize: vertical; min-height: 56px; }
   document.getElementById('modPasteClearBtn').addEventListener('click', function () {
     document.getElementById('modPasteInput').value = '';
     document.getElementById('modPasteResult').textContent = '';
+  });
+
+  document.getElementById('panelAPasteBtn').addEventListener('click', function () {
+    var text = document.getElementById('panelAPasteInput').value;
+    var resultEl = document.getElementById('panelAPasteResult');
+    var parsed = parsePlayByPlayText(text);
+    if (!parsed) {
+      resultEl.textContent = 'プレー内容を認識できませんでした。手動で入力してください。';
+      return;
+    }
+    applyParsedPlayToPanelA(parsed);
+    var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
+    var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
+    parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
+    if (parsed.jersey) parts.push('背番号: #' + parsed.jersey);
+    parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
+    var note = playType === 'other' ? ' 「その他」欄に自動入力したので、内容を確認・修正してください。' : ' 読み取れなかった項目や間違っている項目は手動で直してください。';
+    resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。' + note;
+  });
+
+  document.getElementById('panelAPasteClearBtn').addEventListener('click', function () {
+    document.getElementById('panelAPasteInput').value = '';
+    document.getElementById('panelAPasteResult').textContent = '';
   });
 
   renderHistory();
