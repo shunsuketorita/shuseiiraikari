@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>修正依頼テンプレ作成(編集中)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text x='0' y='14' font-size='14'>🏀</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -236,6 +237,12 @@ body {
 }
 .seg button:not(.active):hover { border-color: var(--text-faint); }
 .seg.small button { padding: 7px 9px; font-size: 12.5px; }
+
+#modAspectSeg {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+#modAspectSeg button { flex: none; }
 
 .row { margin-bottom: 16px; }
 .row:last-child { margin-bottom: 0; }
@@ -849,6 +856,8 @@ textarea { resize: vertical; min-height: 56px; }
           </div>
         </div>
 
+        <div id="modFieldsContainer"></div>
+
         <div class="row" id="modAfterClockRow">
           <button class="theme-toggle" id="modAfterClockToggle" type="button">クロックも修正する</button>
           <div class="clock-row" id="modAfterClockInputs" style="display:none;margin-top:10px;">
@@ -857,8 +866,6 @@ textarea { resize: vertical; min-height: 56px; }
             <select id="modAfterClockSec"></select>
           </div>
         </div>
-
-        <div id="modFieldsContainer"></div>
       </div>
 
       <div class="panel">
