@@ -2063,7 +2063,10 @@ textarea { resize: vertical; min-height: 56px; }
           afterTeamName = afterTeam === 'home' ? currentHomeName() : currentAwayName();
         }
         lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　の' + def.label.replace(/\(背番号\)/g, ''));
-        lines.push(teamName + subject + ' → ' + clockPrefix + (afterTeamName !== teamName ? afterTeamName : '') + fmtPlayer(afterVal));
+        lines.push(teamName + subject + ' → ' + (afterTeamName !== teamName ? afterTeamName : '') + fmtPlayer(afterVal));
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
         if (modCategorySel.value === 'block') {
           var brAfterPlayer = getRosterVal(modFieldsContainer, 'modBlockReboundAfterPlayer');
           if (brAfterPlayer) {
@@ -2097,7 +2100,10 @@ textarea { resize: vertical; min-height: 56px; }
         var afterExtra = afterTypeText + (afterStealText ? '・スティール: ' + afterStealText : '');
 
         lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　のターンオーバー');
-        lines.push(teamName + subject + '(' + beforeExtra + ')' + ' → ' + clockPrefix + (afterTeamName2 !== teamName ? afterTeamName2 : '') + fmtPlayer(afterTurnoverVal) + '(' + afterExtra + ')');
+        lines.push(teamName + subject + '(' + beforeExtra + ')' + ' → ' + (afterTeamName2 !== teamName ? afterTeamName2 : '') + fmtPlayer(afterTurnoverVal) + '(' + afterExtra + ')');
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
       } else if (def.field === 'foulFull') {
         var foulOppTeamName = team === 'home' ? currentAwayName() : currentHomeName();
         var afterFoulTeam = getSegValue('modFoulAfterTeamSeg') || team;
@@ -2243,7 +2249,10 @@ textarea { resize: vertical; min-height: 56px; }
         } else {
           lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + (subject ? ' ' + subject : '') + 'の' + aspectLabel);
         }
-        lines.push(beforeText + ' → ' + clockPrefix + afterText);
+        lines.push(beforeText + ' → ' + afterText);
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
       }
     } else if (panelPlayType(panelA) === 'substitution') {
       if (correction === '削除') {
