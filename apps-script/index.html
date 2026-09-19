@@ -1,0 +1,2937 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>修正依頼テンプレ作成(編集中)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text x='0' y='14' font-size='14'>🏀</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #12151b;
+  --panel: #191e26;
+  --panel-2: #1f2530;
+  --border: #2a3140;
+  --border-soft: #232a37;
+  --text: #e9ecf2;
+  --text-dim: #939cad;
+  --text-faint: #616c80;
+  --primary: #5b8def;
+  --primary-text: #ffffff;
+  --home: #3fb6c9;
+  --away: #d9a441;
+  --danger: #f0625f;
+  --success: #3fae82;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sans: 'Noto Sans JP', 'Manrope', system-ui, sans-serif;
+}
+:root[data-theme="light"] {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel-2: #eef0f3;
+  --border: #dde1e6;
+  --border-soft: #e6e9ed;
+  --text: #1a1d23;
+  --text-dim: #5b6470;
+  --text-faint: #838d99;
+  --primary: #3457c4;
+  --primary-text: #ffffff;
+  --home: #12798f;
+  --away: #9c6a1a;
+  --danger: #c23b3b;
+  --success: #1f7a54;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --panel-2: #eef0f3;
+    --border: #dde1e6;
+    --border-soft: #e6e9ed;
+    --text: #1a1d23;
+    --text-dim: #5b6470;
+    --text-faint: #838d99;
+    --primary: #3457c4;
+    --primary-text: #ffffff;
+    --home: #12798f;
+    --away: #9c6a1a;
+    --danger: #c23b3b;
+    --success: #1f7a54;
+  }
+}
+* { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  padding: 28px 16px 100px;
+}
+.wrap { max-width: 980px; margin: 0 auto; }
+
+#stickyActionBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
+  z-index: 50;
+}
+.sticky-action-inner { max-width: 980px; margin: 0 auto; }
+#stickyActionBar .generate-btn { margin-top: 0; }
+
+.hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.hero h1 {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.wip-badge {
+  display: inline-block;
+  vertical-align: middle;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--away) 22%, transparent);
+  color: var(--away);
+  border: 1px solid color-mix(in srgb, var(--away) 45%, transparent);
+}
+.hero p {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  max-width: 40em;
+}
+
+.usage-guide { margin-bottom: 18px; }
+.usage-body {
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+.usage-body.collapsed { display: none; }
+.usage-body ol { margin: 0; padding-left: 1.2em; }
+.usage-body li { margin-bottom: 6px; }
+.usage-body li:last-child { margin-bottom: 0; }
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-dim);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-family: var(--sans);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { border-color: var(--text-faint); color: var(--text); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .grid { grid-template-columns: 1fr; }
+  #resultColumn { order: -1; }
+}
+
+.cmp-row > div:first-child {
+  background: color-mix(in srgb, var(--text-faint) 10%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.cmp-row > div:last-child {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 18px 20px;
+}
+.panel + .panel { margin-top: 18px; }
+
+.panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+#teamRosterBody.collapsed { display: none; }
+
+.content-panel-wrap { display: none; }
+.content-panel-wrap.show { display: block; }
+
+.section-label {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+  font-weight: 500;
+}
+.section-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.seg {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.seg button {
+  flex: 1 1 auto;
+  min-width: 64px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.seg button.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 700;
+}
+.seg button[data-val="home"].active {
+  border-color: var(--home);
+  background: color-mix(in srgb, var(--home) 22%, var(--panel-2));
+  color: var(--home);
+}
+.seg button[data-val="away"].active {
+  border-color: var(--away);
+  background: color-mix(in srgb, var(--away) 22%, var(--panel-2));
+  color: var(--away);
+}
+.seg button:not(.active):hover { border-color: var(--text-faint); }
+.seg.small button { padding: 7px 9px; font-size: 12.5px; }
+
+#modAspectSeg {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+#modAspectSeg button { flex: none; }
+
+.row { margin-bottom: 16px; }
+.row:last-child { margin-bottom: 0; }
+label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+input[type="text"], select, textarea {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+input.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+textarea { resize: vertical; min-height: 56px; }
+
+.clock-row { display: flex; align-items: center; gap: 6px; }
+.clock-row select { width: 100%; text-align: center; font-size: 18px; font-family: var(--mono); text-align-last: center; }
+.clock-row span { color: var(--text-faint); font-family: var(--mono); font-size: 18px; }
+
+.detail-block { display: none; }
+.detail-block.show { display: block; }
+.sub-row { display: none; }
+.sub-row.show { display: block; }
+
+.err { font-size: 12px; color: var(--danger); margin-top: 5px; display: none; }
+.err.show { display: block; }
+.invalid { border-color: var(--danger) !important; }
+
+.generate-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+.generate-btn:hover { filter: brightness(1.05); }
+.generate-btn.copied { background: var(--success); }
+
+.output-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+}
+.output-text {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  margin: 0 0 10px;
+  min-height: 20px;
+}
+.output-empty { color: var(--text-faint); font-family: var(--sans); font-size: 13.5px; }
+.copy-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.copy-btn:hover { border-color: var(--text-faint); color: var(--text); }
+.copy-btn.copied { border-color: var(--success); color: var(--success); }
+
+.history-item {
+  border-top: 1px solid var(--border-soft);
+  padding: 12px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.history-item:first-child { border-top: none; padding-top: 4px; }
+.history-item.minimized {
+  padding: 7px 0;
+  align-items: center;
+}
+.history-text-mini {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-faint);
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.history-text {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-dim);
+  flex: 1;
+}
+.history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.history-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.history-status { display: flex; gap: 10px; }
+.hist-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.hist-check input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+.hist-check.on { color: var(--success); }
+.history-period-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.icon-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--text-faint); }
+.history-empty { color: var(--text-faint); font-size: 13px; }
+
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  margin-right: 6px;
+}
+.badge.home { background: color-mix(in srgb, var(--home) 20%, transparent); color: var(--home); }
+.badge.away { background: color-mix(in srgb, var(--away) 20%, transparent); color: var(--away); }
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.roster-slot {
+  width: 100%;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 7px 2px;
+}
+.roster-add-btn {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.roster-add-btn:hover { border-color: var(--primary); color: var(--text); }
+.roster-add-btn:disabled { opacity: 0.4; cursor: default; }
+.roster-add-btn:disabled:hover { border-color: var(--border); color: var(--text-faint); }
+.roster-custom { margin-top: 6px; }
+
+.roster-picker { display: block; }
+.roster-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+}
+.roster-pick-btn {
+  padding: 9px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.roster-pick-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 700;
+}
+.roster-pick-btn:not(.active):hover { border-color: var(--text-faint); }
+.roster-pick-special {
+  grid-column: span 2;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+.roster-pick-custom-btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-faint);
+  border-style: dashed;
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div>
+      <h1>修正依頼テンプレ作成 <span class="wip-badge">編集中</span></h1>
+      <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
+  </div>
+
+  <div class="usage-guide">
+    <button class="theme-toggle" id="usageToggle" type="button">使い方を見る</button>
+    <div id="usageBody" class="usage-body collapsed">
+      <ol>
+        <li>「チーム名・背番号」に、ホーム/アウェイのチーム名と選手の背番号を登録します(最初に一度だけ)。</li>
+        <li>「ログ修正」「ログ挿入」「ログ削除」から、今回やりたいことを選びます。</li>
+        <li>FLSのACTION LOGなどから対象プレーの行をコピーして「FLSのプレイバイプレイを貼り付けて自動入力」欄に貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
+        <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
+        <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
+        <li>画面下の「テンプレ文を作成してコピー」を押すと、文章が自動で作られてコピーされます。</li>
+        <li>現地に送るチャットに貼り付けて送信します。</li>
+        <li>送信履歴の「送信済み」「修正確認済み」のチェックボックスを、送信したら・修正を確認できたら、それぞれチェックします。</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div>
+      <div class="panel">
+        <div class="panel-header-row">
+          <div>
+            <p class="section-label" style="margin-bottom:2px;">チーム名・背番号</p>
+            <p class="section-sub" id="teamRosterSummary" style="margin:0;"></p>
+          </div>
+          <button class="theme-toggle" id="teamRosterToggle" type="button">閉じる</button>
+        </div>
+        <div id="teamRosterBody">
+        <div class="two-col">
+          <div>
+            <label for="homeName">ホーム チーム名</label>
+            <input type="text" id="homeName" placeholder="例: A東京">
+          </div>
+          <div>
+            <label for="awayName">アウェイ チーム名</label>
+            <input type="text" id="awayName" placeholder="例: 琉球">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:16px">
+          <label id="rosterHomeLabel">ホーム 背番号一覧</label>
+          <div class="roster-grid" id="rosterHomeGrid"></div>
+          <button class="roster-add-btn" id="rosterHomeAddBtn" type="button">+ 選手を追加</button>
+        </div>
+        <div class="row">
+          <label id="rosterAwayLabel">アウェイ 背番号一覧</label>
+          <div class="roster-grid" id="rosterAwayGrid"></div>
+          <button class="roster-add-btn" id="rosterAwayAddBtn" type="button">+ 選手を追加</button>
+        </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="section-label">修正の種類</p>
+        <div class="seg" id="seg-correction">
+          <button data-val="修正" class="active" type="button">ログ修正</button>
+          <button data-val="挿入" type="button">ログ挿入</button>
+          <button data-val="削除" type="button">ログ削除</button>
+        </div>
+
+        <div class="row" style="margin-top:18px">
+          <label>ピリオド</label>
+          <div class="seg" id="seg-period">
+            <button data-val="1Q" class="active" type="button">1Q</button>
+            <button data-val="2Q" type="button">2Q</button>
+            <button data-val="3Q" type="button">3Q</button>
+            <button data-val="4Q" type="button">4Q</button>
+          </div>
+          <button class="roster-add-btn" id="addOTBtn" type="button" style="margin-top:8px;">+ OTを追加</button>
+        </div>
+
+        <div class="row">
+          <label>試合クロック(残り時間)</label>
+          <div class="clock-row">
+            <select id="clockMin"></select>
+            <span>:</span>
+            <select id="clockSec"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel content-panel-wrap" id="panelAWrap">
+        <p class="section-label" id="contentLabelA">元の内容(修正前)</p>
+        <div class="row">
+          <label for="panelAPasteInput">FLSのプレイバイプレイを貼り付けて自動入力</label>
+          <textarea id="panelAPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
+          <button class="theme-toggle" id="panelAPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
+          <button class="theme-toggle" id="panelAPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
+          <p class="section-sub" id="panelAPasteResult" style="margin-top:6px;"></p>
+        </div>
+        <div class="content-panel" id="panelA">
+          <div class="row">
+            <label for="f-playType">プレーの種類</label>
+            <select class="f-playType" id="f-playType">
+              <option value="score">シュート</option>
+              <option value="foul">ファウル</option>
+              <option value="turnover">ターンオーバー</option>
+              <option value="substitution">選手交代</option>
+              <option value="timeout">タイムアウト</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+
+          <div class="row two-col" id="panelATeamPlayerRow">
+            <div>
+              <label>チーム</label>
+              <div class="seg team-seg" id="panelATeamSeg">
+                <button data-val="home" class="active" type="button">ホーム</button>
+                <button data-val="away" type="button">アウェイ</button>
+              </div>
+            </div>
+            <div id="panelAPlayerWrap">
+              <label for="panelAPlayer-select">対象選手(背番号)</label>
+              <span class="roster-picker">
+                <input type="hidden" class="mono roster-select panelAPlayer-select" id="panelAPlayer-select" data-roster-rel="same">
+                <div class="roster-picker-grid"></div>
+                <input class="mono roster-custom panelAPlayer-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+              </span>
+              <div class="err" id="panelA-err-player">背番号を入力してください。</div>
+            </div>
+          </div>
+
+          <div class="detail-block show" data-detail="score">
+            <div class="row two-col">
+              <div>
+                <label>シュート位置</label>
+                <input type="hidden" class="f-scoreType" id="f-scoreType">
+                <div class="seg small mini-seg" id="f-scoreTypeSeg">
+                  <button type="button" data-val="2P" class="active">2ポイント</button>
+                  <button type="button" data-val="3P">3ポイント</button>
+                  <button type="button" data-val="ペイント内">ペイント内</button>
+                  <button type="button" data-val="FT">フリースロー</button>
+                </div>
+              </div>
+              <div>
+                <label>結果</label>
+                <input type="hidden" class="f-scoreResult" id="f-scoreResult">
+                <div class="seg small mini-seg" id="f-scoreResultSeg">
+                  <button type="button" data-val="カウント" class="active">カウント</button>
+                  <button type="button" data-val="アウト">アウト</button>
+                </div>
+              </div>
+            </div>
+            <div class="row sub-row show score-shotstyle-row">
+              <label for="f-scoreShotStyle">シュート種類(FIBA分類)</label>
+              <select class="f-scoreShotStyle" id="f-scoreShotStyle">
+                <option value="">指定しない</option>
+                <option value="ジャンプシュート">ジャンプシュート</option>
+                <option value="レイアップ">レイアップ</option>
+                <option value="ダンク">ダンク</option>
+                <option value="プットバックダンク">プットバックダンク</option>
+                <option value="プットバックティップイン">プットバックティップイン</option>
+                <option value="ドライビングレイアップ">ドライビングレイアップ</option>
+                <option value="リバースレイアップ">リバースレイアップ</option>
+                <option value="ユーロステップ">ユーロステップ</option>
+                <option value="アリウープレイアップ">アリウープレイアップ</option>
+                <option value="アリウープダンク">アリウープダンク</option>
+                <option value="フックショット">フックショット</option>
+                <option value="フローティングジャンプショット">フローティングジャンプショット</option>
+                <option value="フェイドアウェイジャンプショット">フェイドアウェイジャンプショット</option>
+                <option value="ターンアラウンドジャンプショット">ターンアラウンドジャンプショット</option>
+                <option value="ステップバックジャンプショット">ステップバックジャンプショット</option>
+                <option value="プルアップジャンプショット">プルアップジャンプショット</option>
+              </select>
+            </div>
+            <div class="row">
+              <label for="f-scoreAssist-select">アシスト選手の背番号(あれば)</label>
+              <span class="roster-picker">
+                <input type="hidden" class="mono roster-select f-scoreAssist-select" id="f-scoreAssist-select" data-roster-rel="same" data-special-value="アシストなし">
+                <div class="roster-picker-grid"></div>
+                <input class="mono roster-custom f-scoreAssist-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+              </span>
+            </div>
+            <div class="row">
+              <label>ファストブレイク</label>
+              <div class="seg small f-scoreFastbreak">
+                <button data-val="ファストブレイクなし" class="active" type="button">なし</button>
+                <button data-val="ファストブレイクあり" type="button">あり</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-block" data-detail="foul">
+            <div class="row">
+              <label>対象</label>
+              <div class="seg small seg-foul-target">
+                <button data-val="選手" class="active" type="button">選手</button>
+                <button data-val="ヘッドコーチ" type="button">ヘッドコーチ</button>
+                <button data-val="ベンチ" type="button">ベンチ</button>
+              </div>
+            </div>
+            <div class="row">
+              <label for="f-foulType">種別(FIBA分類)</label>
+              <select class="f-foulType" id="f-foulType">
+                <option value="シューティングファウル">シューティングファウル</option>
+                <option value="パーソナルファウル">パーソナルファウル</option>
+                <option value="オフェンスファウル">オフェンスファウル</option>
+                <option value="スローインファウル">スローインファウル</option>
+                <option value="テクニカルファウル">テクニカルファウル</option>
+                <option value="アンスポーツマンライクファウル">アンスポーツマンライクファウル</option>
+                <option value="ディスクォリファイングファウル">ディスクォリファイングファウル</option>
+              </select>
+            </div>
+            <div class="row sub-row show foul-on-row">
+              <label for="f-foulOn-select">相手(ファウルされた選手)の背番号(あれば)</label>
+              <span class="roster-picker">
+                <input type="hidden" class="mono roster-select f-foulOn-select" id="f-foulOn-select" data-roster-rel="opp">
+                <div class="roster-picker-grid"></div>
+                <input class="mono roster-custom f-foulOn-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+              </span>
+            </div>
+          </div>
+
+          <div class="detail-block" data-detail="turnover">
+            <div class="row">
+              <label for="f-turnoverType">種別(FIBA分類)</label>
+              <select class="f-turnoverType" id="f-turnoverType">
+                <option value="バッドパス">バッドパス</option>
+                <option value="ボールハンドリング/ファンブル">ボールハンドリング / ファンブル</option>
+                <option value="アウトオブバウンズ">アウトオブバウンズ</option>
+                <option value="トラベリング">トラベリング</option>
+                <option value="3秒バイオレーション">3秒バイオレーション</option>
+                <option value="5秒バイオレーション">5秒バイオレーション</option>
+                <option value="8秒バイオレーション">8秒バイオレーション</option>
+                <option value="ショットクロックバイオレーション">ショットクロックバイオレーション</option>
+                <option value="バックコートバイオレーション">バックコートバイオレーション</option>
+                <option value="オフェンスファウル">オフェンスファウル</option>
+                <option value="オフェンスゴールテンディング">オフェンスゴールテンディング</option>
+                <option value="ダブルドリブル">ダブルドリブル</option>
+                <option value="キャリング/パーミング">キャリング / パーミング</option>
+                <option value="その他">その他</option>
+              </select>
+            </div>
+            <div class="row sub-row turnover-other-row">
+              <label for="f-turnoverOther">内容(自由記入)</label>
+              <input type="text" class="f-turnoverOther" id="f-turnoverOther" placeholder="具体的な内容を記入">
+            </div>
+            <div class="row">
+              <label for="f-turnoverSteal-select">スティール選手(あれば・相手チーム)</label>
+              <span class="roster-picker">
+                <input type="hidden" class="mono roster-select f-turnoverSteal-select" id="f-turnoverSteal-select" data-roster-rel="opp" data-special-value="スティールなし">
+                <div class="roster-picker-grid"></div>
+                <input class="mono roster-custom f-turnoverSteal-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+              </span>
+            </div>
+          </div>
+
+          <div class="detail-block" data-detail="substitution" id="panelASubBlock"></div>
+
+          <div class="detail-block" data-detail="timeout">
+            <div class="row">
+              <label>チーム</label>
+              <div class="seg small team-seg" id="f-timeoutTeamSeg">
+                <button type="button" data-val="home" class="active">ホーム</button>
+                <button type="button" data-val="away">アウェイ</button>
+                <button type="button" data-val="official">オフィシャルタイムアウト</button>
+              </div>
+            </div>
+            <div class="row">
+              <label for="f-timeoutNote">内容(自由記入)</label>
+              <textarea class="f-timeoutNote" id="f-timeoutNote" placeholder="例: メディカルタイムアウト"></textarea>
+            </div>
+          </div>
+
+          <div class="detail-block" data-detail="other">
+            <div class="row">
+              <label for="f-otherNote">内容(自由記入)</label>
+              <textarea class="f-otherNote" id="f-otherNote" placeholder="内容を記入"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel content-panel-wrap show" id="modPanelWrap">
+        <p class="section-label">訂正内容</p>
+        <div class="row">
+          <label for="modPasteInput">FLSのプレイバイプレイを貼り付けて自動入力(元の内容用)</label>
+          <textarea id="modPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
+          <button class="theme-toggle" id="modPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
+          <button class="theme-toggle" id="modPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
+          <p class="section-sub" id="modPasteResult" style="margin-top:6px;"></p>
+        </div>
+        <div class="row">
+          <label for="modCategory">プレーの種類</label>
+          <select id="modCategory">
+            <option value="score">シュート全般</option>
+            <option value="shotStyle">シュート種類</option>
+            <option value="assist">アシスト</option>
+            <option value="fastbreak">ファストブレイク</option>
+            <option value="block">ブロックショット</option>
+            <option value="rebound">リバウンド</option>
+            <option value="turnover">ターンオーバー</option>
+            <option value="foul">ファウル</option>
+            <option value="substitution">選手交代</option>
+            <option value="timeout">タイムアウト</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+
+        <div class="row sub-row" id="modFoulTargetRow">
+          <label>対象</label>
+          <div class="seg small" id="modFoulTargetSeg">
+            <button data-val="選手" class="active" type="button">選手</button>
+            <button data-val="ヘッドコーチ" type="button">ヘッドコーチ</button>
+            <button data-val="ベンチ" type="button">ベンチ</button>
+          </div>
+        </div>
+
+        <div class="row" id="modAspectRow">
+          <label>訂正したい項目</label>
+          <input type="hidden" id="modAspect">
+          <div class="seg small mini-seg" id="modAspectSeg"></div>
+        </div>
+
+        <p class="section-sub" style="margin-top:14px;" id="modRecordLabel">記録</p>
+        <div class="row two-col" id="modRecordRow">
+          <div>
+            <label>チーム</label>
+            <div class="seg team-seg" id="modTeamSeg">
+              <button data-val="home" class="active" type="button">ホーム</button>
+              <button data-val="away" type="button">アウェイ</button>
+            </div>
+          </div>
+          <div id="modPlayerWrap">
+            <label for="modPlayer-select">対象選手(背番号)</label>
+            <span class="roster-picker">
+              <input type="hidden" class="mono roster-select modPlayer-select" id="modPlayer-select" data-roster-rel="same">
+              <div class="roster-picker-grid"></div>
+              <input class="mono roster-custom modPlayer-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+            </span>
+            <div class="err" id="mod-err-player">背番号を入力してください。</div>
+          </div>
+        </div>
+
+        <div class="row" id="modTimeoutTeamRow" style="display:none;">
+          <label>チーム</label>
+          <div class="seg small team-seg" id="modTimeoutTeamSeg">
+            <button type="button" data-val="home" class="active">ホーム</button>
+            <button type="button" data-val="away">アウェイ</button>
+            <button type="button" data-val="official">オフィシャルタイムアウト</button>
+          </div>
+        </div>
+
+        <div class="row two-col" id="modTurnoverBeforeExtra" style="display:none;">
+          <div>
+            <label for="modBeforeTurnoverType">修正前のターンオーバーの種類</label>
+            <select id="modBeforeTurnoverType"></select>
+            <input type="text" id="modBeforeTurnoverOther" placeholder="その他の内容" style="margin-top:6px;display:none">
+          </div>
+          <div>
+            <label for="modBeforeStealPlayer-select">修正前のスティール選手(背番号)</label>
+            <span class="roster-picker">
+              <input type="hidden" class="mono roster-select modBeforeStealPlayer-select" id="modBeforeStealPlayer-select" data-roster-rel="opp" data-special-value="スティールなし">
+              <div class="roster-picker-grid"></div>
+              <input class="mono roster-custom modBeforeStealPlayer-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+            </span>
+          </div>
+        </div>
+
+        <div class="row two-col" id="modFoulBeforeExtra" style="display:none;">
+          <div>
+            <label for="modBeforeFoulType">修正前のファウルの種類</label>
+            <select id="modBeforeFoulType"></select>
+          </div>
+          <div>
+            <label for="modBeforeFoulOpponent-select">修正前のREC選手(あれば)</label>
+            <span class="roster-picker">
+              <input type="hidden" class="mono roster-select modBeforeFoulOpponent-select" id="modBeforeFoulOpponent-select" data-roster-rel="opp" data-special-value="相手なし">
+              <div class="roster-picker-grid"></div>
+              <input class="mono roster-custom modBeforeFoulOpponent-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">
+            </span>
+          </div>
+        </div>
+
+        <div id="modFieldsContainer"></div>
+
+        <div class="row" id="modAfterClockRow">
+          <button class="theme-toggle" id="modAfterClockToggle" type="button">クロックも修正する</button>
+          <div class="clock-row" id="modAfterClockInputs" style="display:none;margin-top:10px;">
+            <select id="modAfterClockMin"></select>
+            <span>:</span>
+            <select id="modAfterClockSec"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <label for="memo">修正理由(あれば)</label>
+          <textarea id="memo" placeholder="例: 動画ではボールに触れているように見えるためブロックありだと思います。"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultColumn">
+      <div class="panel">
+        <p class="section-label">生成結果</p>
+        <div class="output-card">
+          <p class="output-text output-empty" id="outputText">フォームを入力して「テンプレ文を作成」を押してください。</p>
+          <button class="copy-btn" id="copyBtn" type="button">コピー</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="section-label">送信履歴(この端末のみに保存)</p>
+        <div id="historyPeriodFilter" class="history-period-filter"></div>
+        <div id="historyList">
+          <p class="history-empty">まだ履歴はありません。</p>
+        </div>
+        <button class="theme-toggle" id="historyMoreBtn" type="button" style="display:none;margin-top:10px;">もっと見る</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="stickyActionBar">
+  <div class="sticky-action-inner">
+    <button class="generate-btn" id="generateBtn" type="button">テンプレ文を作成してコピー</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var THEME_KEY = 'fls_theme';
+  var HISTORY_KEY = 'fls_history';
+  var TEAM_KEY = 'fls_team_current';
+
+  function applyStoredTheme() {
+    try {
+      var saved = localStorage.getItem(THEME_KEY);
+      if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+    } catch (e) {}
+  }
+  function currentIsLight() {
+    var current = root.getAttribute('data-theme');
+    var mql = window.matchMedia('(prefers-color-scheme: light)').matches;
+    return current === 'light' || (!current && mql);
+  }
+
+  var themeToggleBtn = document.getElementById('themeToggle');
+  function updateThemeIcon() {
+    themeToggleBtn.textContent = (currentIsLight() ? '☀️' : '🌙') + ' 画面の色を切り替え';
+  }
+  applyStoredTheme();
+  updateThemeIcon();
+
+  themeToggleBtn.addEventListener('click', function () {
+    var next = currentIsLight() ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    updateThemeIcon();
+  });
+
+  var usageToggle = document.getElementById('usageToggle');
+  var usageBody = document.getElementById('usageBody');
+  usageToggle.addEventListener('click', function () {
+    var collapsed = usageBody.classList.toggle('collapsed');
+    usageToggle.textContent = collapsed ? '使い方を見る' : '使い方を閉じる';
+  });
+
+  function setupSeg(id, onChange) {
+    var seg = document.getElementById(id);
+    seg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      if (onChange) onChange();
+    });
+  }
+
+  function getSegValue(id) {
+    var active = document.querySelector('#' + id + ' button.active');
+    return active ? active.getAttribute('data-val') : '';
+  }
+  function getSegValueIn(panel, cls) {
+    var active = panel.querySelector('.' + cls + ' button.active');
+    return active ? active.getAttribute('data-val') : '';
+  }
+
+  var homeNameInput = document.getElementById('homeName');
+  var awayNameInput = document.getElementById('awayName');
+
+  function currentHomeName() { return homeNameInput.value.trim() || 'ホーム'; }
+  function currentAwayName() { return awayNameInput.value.trim() || 'アウェイ'; }
+
+  function refreshTeamLabels() {
+    var homeName = currentHomeName();
+    var awayName = currentAwayName();
+    Array.prototype.forEach.call(document.querySelectorAll('.team-seg button[data-val="home"]'), function (b) { b.textContent = homeName; });
+    Array.prototype.forEach.call(document.querySelectorAll('.team-seg button[data-val="away"]'), function (b) { b.textContent = awayName; });
+  }
+
+  function refreshRosterLabels() {
+    var home = homeNameInput.value.trim();
+    var away = awayNameInput.value.trim();
+    document.getElementById('rosterHomeLabel').textContent = home ? 'ホーム(' + home + ') 背番号一覧' : 'ホーム 背番号一覧';
+    document.getElementById('rosterAwayLabel').textContent = away ? 'アウェイ(' + away + ') 背番号一覧' : 'アウェイ 背番号一覧';
+  }
+
+  function loadCurrentTeam() {
+    try {
+      var raw = localStorage.getItem(TEAM_KEY);
+      return raw ? JSON.parse(raw) : { home: '', away: '' };
+    } catch (e) { return { home: '', away: '' }; }
+  }
+  function saveCurrentTeam() {
+    try {
+      localStorage.setItem(TEAM_KEY, JSON.stringify({ home: homeNameInput.value, away: awayNameInput.value }));
+    } catch (e) {}
+  }
+  var initTeam = loadCurrentTeam();
+  homeNameInput.value = initTeam.home || '';
+  awayNameInput.value = initTeam.away || '';
+  refreshTeamLabels();
+  refreshRosterLabels();
+
+  [homeNameInput, awayNameInput].forEach(function (el) {
+    el.addEventListener('input', function () {
+      refreshTeamLabels();
+      refreshRosterLabels();
+      saveCurrentTeam();
+      updateTeamRosterSummary();
+    });
+  });
+
+  var TEAM_PANEL_COLLAPSED_KEY = 'fls_team_panel_collapsed';
+  var teamRosterBody = document.getElementById('teamRosterBody');
+  var teamRosterToggle = document.getElementById('teamRosterToggle');
+  var teamRosterSummary = document.getElementById('teamRosterSummary');
+
+  function updateTeamRosterSummary() {
+    teamRosterSummary.textContent = currentHomeName() + ' vs ' + currentAwayName();
+  }
+
+  function setTeamRosterCollapsed(collapsed) {
+    teamRosterBody.classList.toggle('collapsed', collapsed);
+    teamRosterToggle.textContent = collapsed ? '開く' : '閉じる';
+    try { localStorage.setItem(TEAM_PANEL_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+  }
+
+  teamRosterToggle.addEventListener('click', function () {
+    setTeamRosterCollapsed(!teamRosterBody.classList.contains('collapsed'));
+  });
+
+  var initCollapsed = false;
+  try { initCollapsed = localStorage.getItem(TEAM_PANEL_COLLAPSED_KEY) === '1'; } catch (e) {}
+  setTeamRosterCollapsed(initCollapsed);
+  updateTeamRosterSummary();
+
+  var ROSTER_KEY = 'fls_roster';
+  var ROSTER_INITIAL = 12;
+  var ROSTER_MAX = 15;
+
+  function loadRosterData() {
+    try {
+      var raw = localStorage.getItem(ROSTER_KEY);
+      var parsed = raw ? JSON.parse(raw) : {};
+      return { home: parsed.home || [], away: parsed.away || [] };
+    } catch (e) { return { home: [], away: [] }; }
+  }
+  function saveRosterData() {
+    try { localStorage.setItem(ROSTER_KEY, JSON.stringify(rosterData)); } catch (e) {}
+  }
+
+  var rosterData = loadRosterData();
+
+  function rosterGridEl(team) { return document.getElementById(team === 'home' ? 'rosterHomeGrid' : 'rosterAwayGrid'); }
+  function rosterAddBtnEl(team) { return document.getElementById(team === 'home' ? 'rosterHomeAddBtn' : 'rosterAwayAddBtn'); }
+
+  function makeRosterSlot(team, value) {
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'mono roster-slot';
+    inp.setAttribute('inputmode', 'numeric');
+    inp.maxLength = 3;
+    inp.placeholder = '#';
+    inp.value = value || '';
+    inp.addEventListener('input', function () { onRosterInputChange(team); });
+    inp.addEventListener('blur', function () { sortRoster(team); });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { inp.blur(); }
+    });
+    return inp;
+  }
+
+  function sortRoster(team) {
+    var arr = (rosterData[team] || []).slice();
+    arr.sort(function (a, b) {
+      var an = a === '' ? Infinity : parseInt(a, 10);
+      var bn = b === '' ? Infinity : parseInt(b, 10);
+      if (isNaN(an)) an = Infinity;
+      if (isNaN(bn)) bn = Infinity;
+      if (an === bn) return 0;
+      return an - bn;
+    });
+    var changed = arr.some(function (v, i) { return v !== rosterData[team][i]; });
+    if (!changed) return;
+    rosterData[team] = arr;
+    saveRosterData();
+    buildRosterGrid(team);
+    refreshAllRosterSelects();
+  }
+
+  function updateRosterAddBtn(team) {
+    var grid = rosterGridEl(team);
+    var btn = rosterAddBtnEl(team);
+    var count = grid.querySelectorAll('.roster-slot').length;
+    btn.disabled = count >= ROSTER_MAX;
+  }
+
+  function buildRosterGrid(team) {
+    var grid = rosterGridEl(team);
+    grid.innerHTML = '';
+    var arr = rosterData[team];
+    var slots = Math.max(ROSTER_INITIAL, arr.length);
+    for (var i = 0; i < slots; i++) {
+      grid.appendChild(makeRosterSlot(team, arr[i]));
+    }
+    updateRosterAddBtn(team);
+  }
+
+  function onRosterInputChange(team) {
+    var grid = rosterGridEl(team);
+    rosterData[team] = Array.prototype.map.call(grid.querySelectorAll('.roster-slot'), function (inp) {
+      return inp.value.trim();
+    });
+    saveRosterData();
+    refreshAllRosterSelects();
+  }
+
+  function addRosterSlot(team) {
+    var grid = rosterGridEl(team);
+    if (grid.querySelectorAll('.roster-slot').length >= ROSTER_MAX) return;
+    grid.appendChild(makeRosterSlot(team, ''));
+    updateRosterAddBtn(team);
+  }
+
+  document.getElementById('rosterHomeAddBtn').addEventListener('click', function () { addRosterSlot('home'); });
+  document.getElementById('rosterAwayAddBtn').addEventListener('click', function () { addRosterSlot('away'); });
+
+  buildRosterGrid('home');
+  buildRosterGrid('away');
+
+  function getRoster(team) {
+    return (rosterData[team] || []).filter(function (v) { return v; });
+  }
+
+  function populateRosterSelect(selectEl, team) {
+    var picker = selectEl.closest('.roster-picker');
+    var grid = picker ? picker.querySelector('.roster-picker-grid') : null;
+    if (!grid) return;
+    var roster = getRoster(team);
+    var prevValue = selectEl.value;
+    var special = selectEl.dataset.specialValue || '';
+
+    grid.innerHTML = '';
+    roster.forEach(function (num) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'roster-pick-btn';
+      btn.textContent = '#' + num;
+      btn.dataset.val = num;
+      if (num === prevValue) btn.classList.add('active');
+      grid.appendChild(btn);
+    });
+    if (special) {
+      var sBtn = document.createElement('button');
+      sBtn.type = 'button';
+      sBtn.className = 'roster-pick-btn roster-pick-special';
+      sBtn.textContent = special;
+      sBtn.dataset.val = special;
+      if (special === prevValue) sBtn.classList.add('active');
+      grid.appendChild(sBtn);
+    }
+    var customBtn = document.createElement('button');
+    customBtn.type = 'button';
+    customBtn.className = 'roster-pick-btn roster-pick-custom-btn';
+    customBtn.textContent = '直接入力';
+    customBtn.dataset.val = '__custom__';
+    if (prevValue === '__custom__') customBtn.classList.add('active');
+    grid.appendChild(customBtn);
+
+    var stillValid = prevValue === '' || prevValue === '__custom__' || (special && prevValue === special) || roster.indexOf(prevValue) !== -1;
+    if (!stillValid) { selectEl.value = ''; }
+
+    var custom = picker.querySelector('.roster-custom');
+    if (custom) custom.style.display = (selectEl.value === '__custom__') ? 'block' : 'none';
+  }
+
+  function wireRosterSelect(selectEl) {
+    if (selectEl.dataset.rosterWired) return;
+    selectEl.dataset.rosterWired = '1';
+    var picker = selectEl.closest('.roster-picker');
+    var grid = picker ? picker.querySelector('.roster-picker-grid') : null;
+    var custom = picker ? picker.querySelector('.roster-custom') : null;
+    if (!grid) return;
+    grid.addEventListener('click', function (e) {
+      var btn = e.target.closest('.roster-pick-btn');
+      if (!btn) return;
+      selectEl.value = btn.dataset.val;
+      Array.prototype.forEach.call(grid.querySelectorAll('.roster-pick-btn'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      if (custom) {
+        if (selectEl.value === '__custom__') {
+          custom.style.display = 'block';
+          custom.focus();
+        } else {
+          custom.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  function localTeamFor(el) {
+    if (el.dataset.rosterFixedTeam) return el.dataset.rosterFixedTeam;
+    if (el.dataset.rosterTeamSeg) return getSegValue(el.dataset.rosterTeamSeg) || 'home';
+    if (el.closest('#panelAWrap')) return getSegValue('panelATeamSeg') || 'home';
+    if (el.closest('#modPanelWrap')) return getSegValue('modTeamSeg') || 'home';
+    return 'home';
+  }
+
+  function refreshAllRosterSelects() {
+    Array.prototype.forEach.call(document.querySelectorAll('.roster-select'), function (sel) {
+      var rel = sel.getAttribute('data-roster-rel');
+      var localTeam = localTeamFor(sel);
+      var team = rel === 'opp' ? (localTeam === 'home' ? 'away' : 'home') : localTeam;
+      populateRosterSelect(sel, team);
+      wireRosterSelect(sel);
+    });
+  }
+
+  function homeAwaySegHTML(segId) {
+    return '<div class="seg small team-seg" id="' + segId + '">' +
+      '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
+      '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
+      '</div>';
+  }
+
+  function teamOrBothSegHTML(segId) {
+    return '<div class="row"><label>チーム</label>' +
+      '<div class="seg small" id="' + segId + '">' +
+      '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
+      '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
+      '<button data-val="both" type="button">両チーム</button>' +
+      '</div></div>';
+  }
+
+  function rosterPickerHTML(baseCls, rel, specialValue, teamSegId, fixedTeam) {
+    return '<span class="roster-picker">' +
+      '<input type="hidden" class="mono roster-select ' + baseCls + '-select" id="' + baseCls + '-select" data-roster-rel="' + rel + '"' +
+      (specialValue ? ' data-special-value="' + specialValue + '"' : '') +
+      (teamSegId ? ' data-roster-team-seg="' + teamSegId + '"' : '') +
+      (fixedTeam ? ' data-roster-fixed-team="' + fixedTeam + '"' : '') + '>' +
+      '<div class="roster-picker-grid"></div>' +
+      '<input class="mono roster-custom ' + baseCls + '-custom" type="text" placeholder="背番号を直接入力" inputmode="numeric" maxlength="3" style="display:none">' +
+      '</span>';
+  }
+
+  function miniSegHTML(id, options) {
+    var html = '<input type="hidden" id="' + id + '">' +
+      '<div class="seg small mini-seg" id="' + id + 'Seg">';
+    options.forEach(function (o, i) {
+      html += '<button type="button" data-val="' + o.val + '"' + (i === 0 ? ' class="active"' : '') + '>' + o.label + '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function wireMiniSeg(id) {
+    var seg = document.getElementById(id + 'Seg');
+    var hidden = document.getElementById(id);
+    if (!seg || !hidden) return;
+    var activeBtn = seg.querySelector('button.active');
+    hidden.value = activeBtn ? activeBtn.dataset.val : '';
+    seg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      hidden.value = btn.dataset.val;
+      hidden.dispatchEvent(new Event('change'));
+    });
+  }
+
+  var SPECIAL_PLAYER_VALUES = ['アシストなし', 'チームリバウンド', 'スティールなし', '相手なし', 'ブロックなし'];
+  function fmtPlayer(v) {
+    if (!v) return '';
+    return SPECIAL_PLAYER_VALUES.indexOf(v) !== -1 ? v : '#' + v;
+  }
+
+  function getRosterVal(panel, baseCls) {
+    var sel = panel.querySelector('.' + baseCls + '-select');
+    if (!sel) return '';
+    if (sel.value === '__custom__') {
+      var custom = panel.querySelector('.' + baseCls + '-custom');
+      return custom ? custom.value.trim() : '';
+    }
+    return sel.value;
+  }
+
+  var clockMinSel = document.getElementById('clockMin');
+  var clockSecSel = document.getElementById('clockSec');
+  var modAfterClockMinSel = document.getElementById('modAfterClockMin');
+  var modAfterClockSecSel = document.getElementById('modAfterClockSec');
+  for (var m = 10; m >= 0; m--) {
+    var mm = String(m).padStart(2, '0');
+    var mo = document.createElement('option');
+    mo.value = mm; mo.textContent = mm;
+    clockMinSel.appendChild(mo);
+    var mo2 = document.createElement('option');
+    mo2.value = mm; mo2.textContent = mm;
+    modAfterClockMinSel.appendChild(mo2);
+  }
+  for (var s = 59; s >= 0; s--) {
+    var ss = String(s).padStart(2, '0');
+    var so = document.createElement('option');
+    so.value = ss; so.textContent = ss;
+    clockSecSel.appendChild(so);
+    var so2 = document.createElement('option');
+    so2.value = ss; so2.textContent = ss;
+    modAfterClockSecSel.appendChild(so2);
+  }
+  clockMinSel.value = '00';
+  clockSecSel.value = '00';
+
+  function fillClockSelect(selectEl, isMinutes) {
+    var max = isMinutes ? 10 : 59;
+    for (var i = max; i >= 0; i--) {
+      var v = String(i).padStart(2, '0');
+      var opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      selectEl.appendChild(opt);
+    }
+  }
+
+  function syncAfterClockDefault() {
+    modAfterClockMinSel.value = clockMinSel.value;
+    modAfterClockSecSel.value = clockSecSel.value;
+  }
+  syncAfterClockDefault();
+
+  var modAfterClockToggle = document.getElementById('modAfterClockToggle');
+  var modAfterClockInputs = document.getElementById('modAfterClockInputs');
+  var modAfterClockOpen = false;
+  function setAfterClockOpen(open) {
+    modAfterClockOpen = open;
+    modAfterClockInputs.style.display = open ? 'flex' : 'none';
+    modAfterClockToggle.textContent = open ? 'クロックの修正を閉じる' : 'クロックも修正する';
+    if (!open) { syncAfterClockDefault(); }
+  }
+  modAfterClockToggle.addEventListener('click', function () { setAfterClockOpen(!modAfterClockOpen); });
+  clockMinSel.addEventListener('change', function () { if (!modAfterClockOpen) syncAfterClockDefault(); });
+  clockSecSel.addEventListener('change', function () { if (!modAfterClockOpen) syncAfterClockDefault(); });
+
+  var playLabels = {
+    score: 'シュート', foul: 'ファウル', turnover: 'ターンオーバー',
+    substitution: '選手交代', timeout: 'タイムアウト', other: 'その他'
+  };
+
+  var SUBJECT_LABELS = {
+    score: 'シュート選手', shotStyle: 'シュート選手', fastbreak: 'シュート選手', rebound: 'リバウンド選手',
+    assist: 'アシスト選手', block: 'ブロック選手',
+    foul: 'ファウル選手', turnover: 'ターンオーバー選手'
+  };
+  function subjectLabelFor(type) {
+    return (SUBJECT_LABELS[type] || '対象選手') + '(背番号)';
+  }
+  var MOD_SUBJECT_LABEL_OVERRIDES = { assist: 'シュート選手' };
+  function modSubjectLabelFor(type) {
+    return (MOD_SUBJECT_LABEL_OVERRIDES[type] || SUBJECT_LABELS[type] || '対象選手') + '(背番号)';
+  }
+
+  var panelAPlayerWrap = document.getElementById('panelAPlayerWrap');
+  var modPlayerWrap = document.getElementById('modPlayerWrap');
+  function panelAPlayerVal() { return getRosterVal(panelAPlayerWrap, 'panelAPlayer'); }
+  function modPlayerVal() { return getRosterVal(modPlayerWrap, 'modPlayer'); }
+
+  function setupPanel(panel) {
+    var playTypeSel = panel.querySelector('.f-playType');
+    function updateDetail() {
+      var v = playTypeSel.value;
+      Array.prototype.forEach.call(panel.querySelectorAll('.detail-block'), function (b) {
+        b.classList.toggle('show', b.getAttribute('data-detail') === v);
+      });
+      var pSel = panelAPlayerWrap.querySelector('.panelAPlayer-select');
+      delete pSel.dataset.specialValue;
+      panelAPlayerWrap.querySelector('label').textContent = subjectLabelFor(v);
+      refreshAllRosterSelects();
+      updatePanelAPlayerRequirement();
+      renderPanelASubBlock();
+    }
+    playTypeSel.addEventListener('change', updateDetail);
+
+    var scoreTypeSel = panel.querySelector('.f-scoreType');
+    var shotStyleRow = panel.querySelector('.score-shotstyle-row');
+    scoreTypeSel.addEventListener('change', function () {
+      shotStyleRow.classList.toggle('show', scoreTypeSel.value !== 'FT');
+    });
+    wireMiniSeg('f-scoreType');
+    wireMiniSeg('f-scoreResult');
+
+    var turnoverSel = panel.querySelector('.f-turnoverType');
+    var turnoverOtherRow = panel.querySelector('.turnover-other-row');
+    turnoverSel.addEventListener('change', function () {
+      turnoverOtherRow.classList.toggle('show', turnoverSel.value === 'その他');
+    });
+
+    var foulTargetSeg = panel.querySelector('.seg-foul-target');
+    foulTargetSeg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      Array.prototype.forEach.call(foulTargetSeg.querySelectorAll('button'), function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      updatePanelAPlayerRequirement();
+    });
+
+    var fastbreakSeg = panel.querySelector('.f-scoreFastbreak');
+    fastbreakSeg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      Array.prototype.forEach.call(fastbreakSeg.querySelectorAll('button'), function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+    });
+
+    updateDetail();
+  }
+
+  function panelPlayType(panel) { return panel.querySelector('.f-playType').value; }
+  function panelNeedsPlayer(panel) {
+    var type = panelPlayType(panel);
+    if (type === 'substitution' || type === 'timeout') return false;
+    if (type !== 'foul') return true;
+    return getSegValueIn(panel, 'seg-foul-target') === '選手';
+  }
+
+  var MOD_ASPECTS = {
+    score: [
+      { key: 'scorer', label: 'シュート選手(背番号)', field: 'primaryPlayer' },
+      { key: 'position', label: 'シュート位置', field: 'scorePosition' },
+      { key: 'result', label: 'シュート結果', field: 'scoreResult' },
+      { key: 'multiple', label: '複数を変更したい場合', field: 'scoreMultiple' }
+    ],
+    shotStyle: [
+      { key: 'style', label: 'シュートのシュート種類', field: 'shotStyleOnly' }
+    ],
+    fastbreak: [
+      { key: 'flag', label: 'シュートのファストブレイク', field: 'fastbreakOnly' }
+    ],
+    rebound: [
+      { key: 'player', label: 'リバウンド', field: 'primaryPlayer' }
+    ],
+    assist: [
+      { key: 'player', label: 'シュートのアシスト選手', field: 'secondaryPlayer', fieldLabel: 'アシスト選手', rel: 'same' }
+    ],
+    block: [
+      { key: 'player', label: 'ブロックした選手(背番号)', field: 'primaryPlayer' }
+    ],
+    foul: [
+      { key: 'all', label: 'ファウル', field: 'foulFull' }
+    ],
+    turnover: [
+      { key: 'all', label: 'ターンオーバー', field: 'turnoverFull' }
+    ],
+    substitution: [
+      { key: 'inout', label: 'IN/OUT選手', field: 'subInOutFull' },
+      { key: 'onCourt', label: 'オンザコートで入れる', field: 'onCourtFive' }
+    ],
+    timeout: [
+      { key: 'note', label: '内容(自由記述)', field: 'freeText' }
+    ],
+    other: [
+      { key: 'note', label: '内容(自由記述)', field: 'freeText' }
+    ]
+  };
+
+  var scoreShotStyleOptionsHTML =
+    '<option value="">指定しない</option>' +
+    '<option value="ジャンプシュート">ジャンプシュート</option>' +
+    '<option value="レイアップ">レイアップ</option>' +
+    '<option value="ダンク">ダンク</option>' +
+    '<option value="プットバックダンク">プットバックダンク</option>' +
+    '<option value="プットバックティップイン">プットバックティップイン</option>' +
+    '<option value="ドライビングレイアップ">ドライビングレイアップ</option>' +
+    '<option value="リバースレイアップ">リバースレイアップ</option>' +
+    '<option value="ユーロステップ">ユーロステップ</option>' +
+    '<option value="アリウープレイアップ">アリウープレイアップ</option>' +
+    '<option value="アリウープダンク">アリウープダンク</option>' +
+    '<option value="フックショット">フックショット</option>' +
+    '<option value="フローティングジャンプショット">フローティングジャンプショット</option>' +
+    '<option value="フェイドアウェイジャンプショット">フェイドアウェイジャンプショット</option>' +
+    '<option value="ターンアラウンドジャンプショット">ターンアラウンドジャンプショット</option>' +
+    '<option value="ステップバックジャンプショット">ステップバックジャンプショット</option>' +
+    '<option value="プルアップジャンプショット">プルアップジャンプショット</option>';
+
+  var foulTypeOptionsHTML =
+    '<option value="シューティングファウル">シューティングファウル</option>' +
+    '<option value="パーソナルファウル">パーソナルファウル</option>' +
+    '<option value="オフェンスファウル">オフェンスファウル</option>' +
+    '<option value="スローインファウル">スローインファウル</option>' +
+    '<option value="テクニカルファウル">テクニカルファウル</option>' +
+    '<option value="アンスポーツマンライクファウル">アンスポーツマンライクファウル</option>' +
+    '<option value="ディスクォリファイングファウル">ディスクォリファイングファウル</option>';
+
+  document.getElementById('modBeforeFoulType').innerHTML = foulTypeOptionsHTML;
+
+  var turnoverTypeOptionsHTML =
+    '<option value="バッドパス">バッドパス</option>' +
+    '<option value="ボールハンドリング/ファンブル">ボールハンドリング / ファンブル</option>' +
+    '<option value="アウトオブバウンズ">アウトオブバウンズ</option>' +
+    '<option value="トラベリング">トラベリング</option>' +
+    '<option value="3秒バイオレーション">3秒バイオレーション</option>' +
+    '<option value="5秒バイオレーション">5秒バイオレーション</option>' +
+    '<option value="8秒バイオレーション">8秒バイオレーション</option>' +
+    '<option value="ショットクロックバイオレーション">ショットクロックバイオレーション</option>' +
+    '<option value="バックコートバイオレーション">バックコートバイオレーション</option>' +
+    '<option value="オフェンスファウル">オフェンスファウル</option>' +
+    '<option value="オフェンスゴールテンディング">オフェンスゴールテンディング</option>' +
+    '<option value="ダブルドリブル">ダブルドリブル</option>' +
+    '<option value="キャリング/パーミング">キャリング / パーミング</option>' +
+    '<option value="その他">その他</option>';
+
+  var modBeforeTurnoverTypeSel = document.getElementById('modBeforeTurnoverType');
+  var modBeforeTurnoverOtherEl = document.getElementById('modBeforeTurnoverOther');
+  modBeforeTurnoverTypeSel.innerHTML = turnoverTypeOptionsHTML;
+  modBeforeTurnoverTypeSel.addEventListener('change', function () {
+    modBeforeTurnoverOtherEl.style.display = modBeforeTurnoverTypeSel.value === 'その他' ? 'block' : 'none';
+  });
+
+  var modCategorySel = document.getElementById('modCategory');
+  var modAspectSel = document.getElementById('modAspect');
+  var modFieldsContainer = document.getElementById('modFieldsContainer');
+  var modFoulTargetRow = document.getElementById('modFoulTargetRow');
+  var modFoulTargetSeg = document.getElementById('modFoulTargetSeg');
+
+  modFoulTargetSeg.addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    Array.prototype.forEach.call(modFoulTargetSeg.querySelectorAll('button'), function (b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    updateModPlayerRequirement();
+  });
+
+  function currentAspectDef() {
+    var list = MOD_ASPECTS[modCategorySel.value] || [];
+    return list.filter(function (a) { return a.key === modAspectSel.value; })[0] || list[0];
+  }
+
+  function renderModFields() {
+    var def = currentAspectDef();
+    modFieldsContainer.innerHTML = '';
+    if (!def) return;
+
+    if (def.field === 'primaryPlayer') {
+      var primarySpecial = modCategorySel.value === 'rebound' ? 'チームリバウンド' : (modCategorySel.value === 'block' ? 'ブロックなし' : '');
+      if (modCategorySel.value === 'rebound') {
+        modFieldsContainer.innerHTML =
+          '<div class="row two-col">' +
+          '<div>' +
+          '<label>修正後のチーム</label>' +
+          '<div class="seg team-seg" id="modAfterPlayerTeamSeg">' +
+          '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
+          '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
+          '</div>' +
+          '</div>' +
+          '<div><label for="modAfterPlayer-select">修正後の背番号</label>' +
+          rosterPickerHTML('modAfterPlayer', 'same', primarySpecial, 'modAfterPlayerTeamSeg') +
+          '</div>' +
+          '</div>';
+        var afterTeamSeg = document.getElementById('modAfterPlayerTeamSeg');
+        var curTeam = getSegValue('modTeamSeg') || 'home';
+        if (curTeam === 'away') {
+          Array.prototype.forEach.call(afterTeamSeg.querySelectorAll('button'), function (b) { b.classList.toggle('active', b.getAttribute('data-val') === 'away'); });
+        }
+        setupSeg('modAfterPlayerTeamSeg', refreshAllRosterSelects);
+      } else {
+        var blockReboundHTML = '';
+        if (modCategorySel.value === 'block') {
+          blockReboundHTML =
+            '<div class="row" style="margin-top:14px;">' +
+            '<button class="theme-toggle" id="modBlockReboundToggle" type="button">リバウンドも修正する</button>' +
+            '<div id="modBlockReboundInputs" style="display:none;margin-top:12px;">' +
+            '<p class="section-sub">修正前のリバウンド</p>' +
+            '<div class="row two-col">' +
+            '<div><label>チーム</label>' + homeAwaySegHTML('modBlockReboundBeforeTeamSeg') + '</div>' +
+            '<div><label for="modBlockReboundBeforePlayer-select">背番号</label>' + rosterPickerHTML('modBlockReboundBeforePlayer', 'same', 'チームリバウンド', 'modBlockReboundBeforeTeamSeg') + '</div>' +
+            '</div>' +
+            '<p class="section-sub" style="margin-top:14px;">修正後のリバウンド</p>' +
+            '<div class="row two-col">' +
+            '<div><label>チーム</label>' + homeAwaySegHTML('modBlockReboundAfterTeamSeg') + '</div>' +
+            '<div><label for="modBlockReboundAfterPlayer-select">背番号</label>' + rosterPickerHTML('modBlockReboundAfterPlayer', 'same', 'チームリバウンド', 'modBlockReboundAfterTeamSeg') + '</div>' +
+            '</div>' +
+            '<div class="row" style="margin-top:14px;">' +
+            '<label>リバウンドの時間(ブロックとは別の時間)</label>' +
+            '<div class="clock-row">' +
+            '<select id="modBlockReboundClockMin"></select><span>:</span><select id="modBlockReboundClockSec"></select>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+        }
+        modFieldsContainer.innerHTML =
+          '<div class="row"><label for="modAfterPlayer-select">修正後の背番号</label>' +
+          rosterPickerHTML('modAfterPlayer', 'same', primarySpecial) +
+          '</div>' + blockReboundHTML;
+        if (modCategorySel.value === 'block') {
+          setupSeg('modBlockReboundBeforeTeamSeg', refreshAllRosterSelects);
+          setupSeg('modBlockReboundAfterTeamSeg', refreshAllRosterSelects);
+          var brClockMin = document.getElementById('modBlockReboundClockMin');
+          var brClockSec = document.getElementById('modBlockReboundClockSec');
+          fillClockSelect(brClockMin, true);
+          fillClockSelect(brClockSec, false);
+          brClockMin.value = clockMinSel.value;
+          brClockSec.value = clockSecSel.value;
+          var brToggle = document.getElementById('modBlockReboundToggle');
+          var brInputs = document.getElementById('modBlockReboundInputs');
+          var brOpen = false;
+          brToggle.addEventListener('click', function () {
+            brOpen = !brOpen;
+            brInputs.style.display = brOpen ? 'block' : 'none';
+            brToggle.textContent = brOpen ? 'リバウンド修正を閉じる' : 'リバウンドも修正する';
+          });
+        }
+      }
+    } else if (def.field === 'secondaryPlayer') {
+      var secSpecial = def.fieldLabel === 'アシスト選手' ? 'アシストなし' : '';
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label for="modBeforePlayer-select">修正前の' + def.fieldLabel + '(背番号)</label>' + rosterPickerHTML('modBeforePlayer', def.rel || 'same', secSpecial) + '</div>' +
+        '<div><label for="modAfterPlayer-select">修正後の' + def.fieldLabel + '(背番号)</label>' + rosterPickerHTML('modAfterPlayer', def.rel || 'same', secSpecial) + '</div>' +
+        '</div>';
+    } else if (def.field === 'scorePosition') {
+      var posOptsArr = [{ val: '2P', label: '2ポイント' }, { val: '3P', label: '3ポイント' }, { val: 'ペイント内', label: 'ペイント内' }, { val: 'FT', label: 'フリースロー' }];
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label>修正前のシュート位置</label>' + miniSegHTML('modBeforeScorePosition', posOptsArr) + '</div>' +
+        '<div><label>修正後のシュート位置</label>' + miniSegHTML('modAfterScorePosition', posOptsArr) + '</div>' +
+        '</div>';
+      wireMiniSeg('modBeforeScorePosition');
+      wireMiniSeg('modAfterScorePosition');
+    } else if (def.field === 'scoreResult') {
+      var resOptsArr = [{ val: 'カウント', label: 'カウント' }, { val: 'アウト', label: 'アウト' }];
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label>修正前のシュート結果</label>' + miniSegHTML('modBeforeScoreResultOnly', resOptsArr) + '</div>' +
+        '<div><label>修正後のシュート結果</label>' + miniSegHTML('modAfterScoreResultOnly', resOptsArr) + '</div>' +
+        '</div>';
+      wireMiniSeg('modBeforeScoreResultOnly');
+      wireMiniSeg('modAfterScoreResultOnly');
+    } else if (def.field === 'scoreMultiple') {
+      var mPosOptsArr = [{ val: '2P', label: '2ポイント' }, { val: '3P', label: '3ポイント' }, { val: 'ペイント内', label: 'ペイント内' }, { val: 'FT', label: 'フリースロー' }];
+      var mResOptsArr = [{ val: 'カウント', label: 'カウント' }, { val: 'アウト', label: 'アウト' }];
+      var mFbOptsArr = [{ val: 'ファストブレイクなし', label: 'なし' }, { val: 'ファストブレイクあり', label: 'あり' }];
+      modFieldsContainer.innerHTML =
+        '<p class="section-sub">シュート選手</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label for="modMultiBeforePlayer-select">修正前の背番号</label>' + rosterPickerHTML('modMultiBeforePlayer', 'same', '') + '</div>' +
+        '<div><label for="modMultiAfterPlayer-select">修正後の背番号</label>' + rosterPickerHTML('modMultiAfterPlayer', 'same', '') + '</div>' +
+        '</div>' +
+        '<p class="section-sub" style="margin-top:14px;">シュート位置</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label>修正前</label>' + miniSegHTML('modMultiBeforePosition', mPosOptsArr) + '</div>' +
+        '<div><label>修正後</label>' + miniSegHTML('modMultiAfterPosition', mPosOptsArr) + '</div>' +
+        '</div>' +
+        '<p class="section-sub" style="margin-top:14px;">シュート結果</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label>修正前</label>' + miniSegHTML('modMultiBeforeResult', mResOptsArr) + '</div>' +
+        '<div><label>修正後</label>' + miniSegHTML('modMultiAfterResult', mResOptsArr) + '</div>' +
+        '</div>' +
+        '<p class="section-sub" style="margin-top:14px;">シュート種類</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label for="modMultiBeforeShotStyle">修正前</label><select id="modMultiBeforeShotStyle">' + scoreShotStyleOptionsHTML + '</select></div>' +
+        '<div><label for="modMultiAfterShotStyle">修正後</label><select id="modMultiAfterShotStyle">' + scoreShotStyleOptionsHTML + '</select></div>' +
+        '</div>' +
+        '<p class="section-sub" style="margin-top:14px;">ファストブレイク</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label>修正前</label>' + miniSegHTML('modMultiBeforeFastbreak', mFbOptsArr) + '</div>' +
+        '<div><label>修正後</label>' + miniSegHTML('modMultiAfterFastbreak', mFbOptsArr) + '</div>' +
+        '</div>' +
+        '<p class="section-sub" style="margin-top:14px;">アシスト選手(あれば)</p>' +
+        '<div class="row two-col cmp-row">' +
+        '<div><label for="modMultiBeforeAssist-select">修正前の背番号</label>' + rosterPickerHTML('modMultiBeforeAssist', 'same', 'アシストなし') + '</div>' +
+        '<div><label for="modMultiAfterAssist-select">修正後の背番号</label>' + rosterPickerHTML('modMultiAfterAssist', 'same', 'アシストなし') + '</div>' +
+        '</div>';
+      wireMiniSeg('modMultiBeforePosition');
+      wireMiniSeg('modMultiAfterPosition');
+      wireMiniSeg('modMultiBeforeResult');
+      wireMiniSeg('modMultiAfterResult');
+      wireMiniSeg('modMultiBeforeFastbreak');
+      wireMiniSeg('modMultiAfterFastbreak');
+    } else if (def.field === 'foulFull') {
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label>修正後のチーム</label>' +
+        '<div class="seg team-seg" id="modFoulAfterTeamSeg">' +
+        '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
+        '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
+        '</div></div>' +
+        '<div><label for="modAfterFoulPlayer-select">修正後のファウルした選手(背番号)</label>' + rosterPickerHTML('modAfterFoulPlayer', 'same', '', 'modFoulAfterTeamSeg') + '</div>' +
+        '</div>' +
+        '<div class="row two-col">' +
+        '<div><label for="modAfterFoulType">修正後のファウルの種類</label><select id="modAfterFoulType">' + foulTypeOptionsHTML + '</select></div>' +
+        '<div><label for="modAfterFoulOpponent-select">修正後のREC選手(あれば)</label>' + rosterPickerHTML('modAfterFoulOpponent', 'opp', '相手なし', 'modFoulAfterTeamSeg') + '</div>' +
+        '</div>';
+      var foulAfterTeamSeg = document.getElementById('modFoulAfterTeamSeg');
+      var curFoulTeam = getSegValue('modTeamSeg') || 'home';
+      if (curFoulTeam === 'away') {
+        Array.prototype.forEach.call(foulAfterTeamSeg.querySelectorAll('button'), function (b) { b.classList.toggle('active', b.getAttribute('data-val') === 'away'); });
+      }
+      setupSeg('modFoulAfterTeamSeg', refreshAllRosterSelects);
+    } else if (def.field === 'shotStyleOnly') {
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label for="modBeforeShotStyleOnly">修正前のシュート種類</label><select id="modBeforeShotStyleOnly">' + scoreShotStyleOptionsHTML + '</select></div>' +
+        '<div><label for="modAfterShotStyleOnly">修正後のシュート種類</label><select id="modAfterShotStyleOnly">' + scoreShotStyleOptionsHTML + '</select></div>' +
+        '</div>';
+    } else if (def.field === 'fastbreakOnly') {
+      var fbOptsArr = [{ val: 'ファストブレイクあり', label: 'ファストブレイクあり' }, { val: 'ファストブレイクなし', label: 'ファストブレイクなし' }];
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label>修正前</label>' + miniSegHTML('modBeforeFastbreakOnly', fbOptsArr) + '</div>' +
+        '<div><label>修正後</label>' + miniSegHTML('modAfterFastbreakOnly', fbOptsArr) + '</div>' +
+        '</div>';
+      wireMiniSeg('modBeforeFastbreakOnly');
+      wireMiniSeg('modAfterFastbreakOnly');
+    } else if (def.field === 'turnoverFull') {
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label>修正後のチーム</label>' +
+        '<div class="seg team-seg" id="modTurnoverAfterTeamSeg">' +
+        '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
+        '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
+        '</div></div>' +
+        '<div><label for="modAfterTurnoverPlayer-select">修正後のターンオーバー選手(背番号)</label>' + rosterPickerHTML('modAfterTurnoverPlayer', 'same', '', 'modTurnoverAfterTeamSeg') + '</div>' +
+        '</div>' +
+        '<div class="row two-col">' +
+        '<div><label for="modAfterTurnoverType">修正後のターンオーバーの種類</label><select id="modAfterTurnoverType">' + turnoverTypeOptionsHTML + '</select>' +
+        '<input type="text" id="modAfterTurnoverOther" placeholder="その他の内容" style="margin-top:6px;display:none"></div>' +
+        '<div><label for="modAfterStealPlayer-select">修正後のスティール選手(背番号)</label>' + rosterPickerHTML('modAfterStealPlayer', 'opp', 'スティールなし', 'modTurnoverAfterTeamSeg') + '</div>' +
+        '</div>';
+      var afterTeamSeg2 = document.getElementById('modTurnoverAfterTeamSeg');
+      var curTeam2 = getSegValue('modTeamSeg') || 'home';
+      if (curTeam2 === 'away') {
+        Array.prototype.forEach.call(afterTeamSeg2.querySelectorAll('button'), function (b) { b.classList.toggle('active', b.getAttribute('data-val') === 'away'); });
+      }
+      setupSeg('modTurnoverAfterTeamSeg', refreshAllRosterSelects);
+      var aTSel = document.getElementById('modAfterTurnoverType');
+      var aTOther = document.getElementById('modAfterTurnoverOther');
+      aTSel.addEventListener('change', function () { aTOther.style.display = aTSel.value === 'その他' ? 'block' : 'none'; });
+    } else if (def.field === 'subInOutFull') {
+      modFieldsContainer.innerHTML =
+        teamOrBothSegHTML('modSubTeamSeg') +
+        '<div id="modSubTeamsContainer"></div>';
+      var subTeamsContainer = document.getElementById('modSubTeamsContainer');
+      function subTeamBlockHTML(teamKey, teamLabel) {
+        var cap = teamKey === 'home' ? 'Home' : 'Away';
+        var roster = getRoster(teamKey);
+        var opts = roster.map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
+        var size = Math.max(Math.min(roster.length, 10), 4);
+        return '<p class="section-sub" style="margin-top:10px;">' + teamLabel + 'の交代</p>' +
+          '<div class="two-col">' +
+          '<div><label for="modSubBeforeIn' + cap + 'Multi">修正前 IN選手(複数選択可)</label><select multiple id="modSubBeforeIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+          '<div><label for="modSubBeforeOut' + cap + 'Multi">修正前 OUT選手(複数選択可)</label><select multiple id="modSubBeforeOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+          '</div>' +
+          '<div class="two-col" style="margin-top:10px;">' +
+          '<div><label for="modSubAfterIn' + cap + 'Multi">修正後 IN選手(複数選択可)</label><select multiple id="modSubAfterIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+          '<div><label for="modSubAfterOut' + cap + 'Multi">修正後 OUT選手(複数選択可)</label><select multiple id="modSubAfterOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+          '</div>';
+      }
+      function renderSubTeams() {
+        var v = getSegValue('modSubTeamSeg') || 'home';
+        var html = '';
+        if (v === 'home' || v === 'both') html += subTeamBlockHTML('home', currentHomeName());
+        if (v === 'away' || v === 'both') html += subTeamBlockHTML('away', currentAwayName());
+        subTeamsContainer.innerHTML = html;
+      }
+      setupSeg('modSubTeamSeg', renderSubTeams);
+      renderSubTeams();
+    } else if (def.field === 'onCourtFive') {
+      modFieldsContainer.innerHTML =
+        teamOrBothSegHTML('modOnCourtTeamSeg') +
+        '<div id="modOnCourtTeamsContainer"></div>';
+      var onCourtContainer = document.getElementById('modOnCourtTeamsContainer');
+      function onCourtTeamBlockHTML(teamKey, teamLabel) {
+        var cap = teamKey === 'home' ? 'Home' : 'Away';
+        var roster = getRoster(teamKey);
+        var opts = roster.map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
+        var size = Math.max(Math.min(roster.length, 12), 5);
+        return '<div class="row">' +
+          '<label for="modOnCourt' + cap + 'Multi">' + teamLabel + 'のオンザコート(5人・Ctrl/Cmdクリックで複数選択)</label>' +
+          '<select multiple id="modOnCourt' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select>' +
+          '</div>';
+      }
+      function renderOnCourtTeams() {
+        var v = getSegValue('modOnCourtTeamSeg') || 'home';
+        var html = '';
+        if (v === 'home' || v === 'both') html += onCourtTeamBlockHTML('home', currentHomeName());
+        if (v === 'away' || v === 'both') html += onCourtTeamBlockHTML('away', currentAwayName());
+        onCourtContainer.innerHTML = html;
+      }
+      setupSeg('modOnCourtTeamSeg', renderOnCourtTeams);
+      renderOnCourtTeams();
+    } else if (def.field === 'freeText') {
+      modFieldsContainer.innerHTML =
+        '<div class="row two-col">' +
+        '<div><label for="modBeforeFree">修正前の内容</label><textarea id="modBeforeFree"></textarea></div>' +
+        '<div><label for="modAfterFree">修正後の内容</label><textarea id="modAfterFree"></textarea></div>' +
+        '</div>';
+    }
+    refreshAllRosterSelects();
+  }
+
+  function renderModAspectOptions() {
+    var list = MOD_ASPECTS[modCategorySel.value] || [];
+    var segEl = document.getElementById('modAspectSeg');
+    segEl.innerHTML = '';
+    list.forEach(function (a, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.val = a.key;
+      btn.textContent = a.label;
+      if (i === 0) btn.classList.add('active');
+      segEl.appendChild(btn);
+    });
+    modAspectSel.value = list.length ? list[0].key : '';
+    document.getElementById('modAspectRow').style.display = list.length > 1 ? '' : 'none';
+    modFoulTargetRow.classList.toggle('show', modCategorySel.value === 'foul');
+    var mSel = modPlayerWrap.querySelector('.modPlayer-select');
+    if (modCategorySel.value === 'rebound') { mSel.dataset.specialValue = 'チームリバウンド'; }
+    else if (modCategorySel.value === 'block') { mSel.dataset.specialValue = 'ブロックなし'; }
+    else { delete mSel.dataset.specialValue; }
+    modPlayerWrap.querySelector('label').textContent = modSubjectLabelFor(modCategorySel.value);
+    document.getElementById('modTurnoverBeforeExtra').style.display = (modCategorySel.value === 'turnover') ? '' : 'none';
+    document.getElementById('modFoulBeforeExtra').style.display = (modCategorySel.value === 'foul') ? '' : 'none';
+    var recordHidden = modCategorySel.value === 'other' || modCategorySel.value === 'timeout';
+    document.getElementById('modRecordLabel').style.display = recordHidden ? 'none' : '';
+    document.getElementById('modRecordRow').style.display = recordHidden ? 'none' : '';
+    document.getElementById('modTimeoutTeamRow').style.display = modCategorySel.value === 'timeout' ? '' : 'none';
+    setAfterClockOpen(false);
+    renderModFields();
+    updateModPlayerRequirement();
+  }
+
+  modCategorySel.addEventListener('change', renderModAspectOptions);
+  document.getElementById('modAspectSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var segEl = document.getElementById('modAspectSeg');
+    Array.prototype.forEach.call(segEl.querySelectorAll('button'), function (b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    modAspectSel.value = btn.dataset.val;
+    renderModFields();
+  });
+
+  var panelATeamPlayerRow = document.getElementById('panelATeamPlayerRow');
+
+  function renderPanelASubBlock() {
+    var container = document.getElementById('panelASubBlock');
+    if (!container) return;
+    var correction = getSegValue('seg-correction');
+    var type = panelPlayType(panelA);
+    var isSub = type === 'substitution';
+    var isTimeout = type === 'timeout';
+    if (panelATeamPlayerRow) {
+      panelATeamPlayerRow.style.display = ((isSub && correction === '削除') || isTimeout) ? 'none' : '';
+    }
+    if (!isSub) return;
+    if (correction === '削除') {
+      container.innerHTML = '<p class="section-sub" style="margin:0;">上のピリオド・クロックの交代をまとめて削除します。個別の選手指定は不要です。</p>';
+      return;
+    }
+    container.innerHTML =
+      teamOrBothSegHTML('panelASubTeamSeg') +
+      '<div id="panelASubTeamsContainer"></div>';
+    var subTeamsContainer = document.getElementById('panelASubTeamsContainer');
+    function subTeamBlockHTML(teamKey, teamLabel) {
+      var cap = teamKey === 'home' ? 'Home' : 'Away';
+      var roster = getRoster(teamKey);
+      var opts = roster.map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
+      var size = Math.max(Math.min(roster.length, 10), 4);
+      return '<p class="section-sub" style="margin-top:10px;">' + teamLabel + 'の交代</p>' +
+        '<div class="two-col">' +
+        '<div><label for="panelASubIn' + cap + 'Multi">IN選手(複数選択可)</label><select multiple id="panelASubIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+        '<div><label for="panelASubOut' + cap + 'Multi">OUT選手(複数選択可)</label><select multiple id="panelASubOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
+        '</div>';
+    }
+    function renderSubTeams() {
+      var v = getSegValue('panelASubTeamSeg') || 'home';
+      var html = '';
+      if (v === 'home' || v === 'both') html += subTeamBlockHTML('home', currentHomeName());
+      if (v === 'away' || v === 'both') html += subTeamBlockHTML('away', currentAwayName());
+      subTeamsContainer.innerHTML = html;
+    }
+    setupSeg('panelASubTeamSeg', renderSubTeams);
+    renderSubTeams();
+  }
+
+  var panelA = document.getElementById('panelA');
+  setupPanel(panelA);
+
+  renderModAspectOptions();
+
+  function setWrapEnabled(wrap, baseCls, needs) {
+    wrap.style.opacity = needs ? '1' : '0.45';
+    var sel = wrap.querySelector('.' + baseCls + '-select');
+    var custom = wrap.querySelector('.' + baseCls + '-custom');
+    if (sel) sel.disabled = !needs;
+    if (custom) custom.disabled = !needs;
+    var grid = wrap.querySelector('.roster-picker-grid');
+    if (grid) grid.style.pointerEvents = needs ? '' : 'none';
+  }
+
+  function updateModPlayerRequirement() {
+    var needs;
+    if (modCategorySel.value === 'substitution' || modCategorySel.value === 'other' || modCategorySel.value === 'timeout') needs = false;
+    else if (modCategorySel.value === 'foul') needs = getSegValue('modFoulTargetSeg') === '選手';
+    else needs = true;
+    setWrapEnabled(modPlayerWrap, 'modPlayer', needs);
+  }
+
+  function updatePanelAPlayerRequirement() {
+    var needs = panelNeedsPlayer(panelA);
+    setWrapEnabled(panelAPlayerWrap, 'panelAPlayer', needs);
+  }
+
+  var contentLabelA = document.getElementById('contentLabelA');
+  var panelAWrap = document.getElementById('panelAWrap');
+  var modPanelWrap = document.getElementById('modPanelWrap');
+  function updateContentLabels() {
+    var correction = getSegValue('seg-correction');
+    if (correction === '修正') {
+      panelAWrap.classList.remove('show');
+      modPanelWrap.classList.add('show');
+    } else {
+      panelAWrap.classList.add('show');
+      modPanelWrap.classList.remove('show');
+      contentLabelA.textContent = correction === '挿入' ? '挿入するプレー内容' : '削除するプレー内容';
+    }
+    updateModPlayerRequirement();
+    updatePanelAPlayerRequirement();
+    renderPanelASubBlock();
+  }
+
+  setupSeg('seg-correction', updateContentLabels);
+  setupSeg('seg-period');
+  setupSeg('panelATeamSeg', refreshAllRosterSelects);
+  setupSeg('modTeamSeg', refreshAllRosterSelects);
+  setupSeg('f-timeoutTeamSeg');
+  setupSeg('modTimeoutTeamSeg');
+  updateContentLabels();
+
+  var otCount = 0;
+  document.getElementById('addOTBtn').addEventListener('click', function () {
+    otCount++;
+    var seg = document.getElementById('seg-period');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-val', 'OT' + otCount);
+    btn.textContent = 'OT' + otCount;
+    seg.appendChild(btn);
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  });
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+  function getVal(panel, cls) {
+    var el = panel.querySelector('.' + cls);
+    return el ? el.value.trim() : '';
+  }
+
+  function clearErrors() {
+    document.getElementById('mod-err-player').classList.remove('show');
+    document.getElementById('panelA-err-player').classList.remove('show');
+    modPlayerWrap.querySelector('.modPlayer-select').classList.remove('invalid');
+    panelAPlayerWrap.querySelector('.panelAPlayer-select').classList.remove('invalid');
+  }
+
+  function buildDetailLine(panel) {
+    var type = panelPlayType(panel);
+    if (type === 'score') {
+      var scoreTypeVal = getVal(panel, 'f-scoreType') || '2P';
+      var typeLabel = { '2P': '2ポイントシュート', '3P': '3ポイントシュート', 'ペイント内': 'ペイント内シュート', FT: 'フリースロー' }[scoreTypeVal];
+      var result = getVal(panel, 'f-scoreResult');
+      var style = getVal(panel, 'f-scoreShotStyle');
+      var fastbreak = getSegValueIn(panel, 'f-scoreFastbreak');
+      var line = typeLabel + (style && scoreTypeVal !== 'FT' ? '(' + style + ')' : '') + ' / ' + result;
+      if (fastbreak === 'ファストブレイクあり') line += ' / ファストブレイク';
+      var assist = getRosterVal(panel, 'f-scoreAssist');
+      if (assist && assist !== 'アシストなし') line += '\nアシスト: ' + fmtPlayer(assist);
+      return line;
+    }
+    if (type === 'foul') {
+      var ft = getVal(panel, 'f-foulType');
+      var on = getRosterVal(panel, 'f-foulOn');
+      return ft + (on ? '(相手 ' + fmtPlayer(on) + ')' : '');
+    }
+    if (type === 'turnover') {
+      var tt = getVal(panel, 'f-turnoverType');
+      var other = getVal(panel, 'f-turnoverOther');
+      var steal = getRosterVal(panel, 'f-turnoverSteal');
+      var line = 'ターンオーバー(' + tt + (tt === 'その他' && other ? ': ' + other : '') + ')';
+      if (steal && steal !== 'スティールなし') line += '\nスティール: 相手 ' + fmtPlayer(steal);
+      return line;
+    }
+    if (type === 'other') {
+      return getVal(panel, 'f-otherNote') || '';
+    }
+    return '';
+  }
+
+  function buildTurnoverText(prefix) {
+    var tt = val(prefix + 'TurnoverType');
+    var other = val(prefix + 'TurnoverOther');
+    return tt + (tt === 'その他' && other ? ': ' + other : '');
+  }
+
+  function generate() {
+    clearErrors();
+    var correction = getSegValue('seg-correction');
+    var needsPlayer, player, team, errElId, selEl;
+
+    if (correction === '修正') {
+      if (modCategorySel.value === 'substitution' || modCategorySel.value === 'other' || modCategorySel.value === 'timeout') needsPlayer = false;
+      else if (modCategorySel.value === 'foul') needsPlayer = getSegValue('modFoulTargetSeg') === '選手';
+      else needsPlayer = true;
+      player = modPlayerVal();
+      team = getSegValue('modTeamSeg');
+      errElId = 'mod-err-player';
+      selEl = modPlayerWrap.querySelector('.modPlayer-select');
+    } else {
+      needsPlayer = panelNeedsPlayer(panelA);
+      player = panelAPlayerVal();
+      team = getSegValue('panelATeamSeg');
+      errElId = 'panelA-err-player';
+      selEl = panelAPlayerWrap.querySelector('.panelAPlayer-select');
+    }
+
+    if (needsPlayer && !player) {
+      document.getElementById(errElId).classList.add('show');
+      selEl.classList.add('invalid');
+      selEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return null;
+    }
+
+    var clock = clockMinSel.value + ':' + clockSecSel.value;
+    var period = getSegValue('seg-period');
+    var teamName = team === 'home' ? currentHomeName() : currentAwayName();
+    var correctionLabel = { '修正': 'ログ修正', '挿入': 'ログ挿入', '削除': 'ログ削除' }[correction] || correction;
+
+    var lines = [];
+
+    if (correction === '修正') {
+      var def = currentAspectDef();
+      var subject = needsPlayer ? fmtPlayer(player) : (modCategorySel.value === 'foul' ? getSegValue('modFoulTargetSeg') : '');
+      var afterClock = modAfterClockMinSel.value + ':' + modAfterClockSecSel.value;
+      var clockPrefix = (modAfterClockOpen && afterClock !== clock) ? (afterClock + ' ') : '';
+
+      if (def.field === 'primaryPlayer') {
+        var afterVal = getRosterVal(modFieldsContainer, 'modAfterPlayer');
+        var afterTeamName = teamName;
+        if (modCategorySel.value === 'rebound') {
+          var afterTeam = getSegValue('modAfterPlayerTeamSeg') || team;
+          afterTeamName = afterTeam === 'home' ? currentHomeName() : currentAwayName();
+        }
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　の' + def.label.replace(/\(背番号\)/g, ''));
+        lines.push(teamName + subject + ' → ' + (afterTeamName !== teamName ? afterTeamName : '') + fmtPlayer(afterVal));
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+        if (modCategorySel.value === 'block') {
+          var brAfterPlayer = getRosterVal(modFieldsContainer, 'modBlockReboundAfterPlayer');
+          if (brAfterPlayer) {
+            var rbBeforeTeam = getSegValue('modBlockReboundBeforeTeamSeg') || 'home';
+            var rbBeforeTeamName = rbBeforeTeam === 'home' ? currentHomeName() : currentAwayName();
+            var rbBeforePlayer = getRosterVal(modFieldsContainer, 'modBlockReboundBeforePlayer');
+            var rbBeforeText = rbBeforePlayer ? (rbBeforePlayer === 'チームリバウンド' ? rbBeforePlayer : rbBeforeTeamName + fmtPlayer(rbBeforePlayer)) : '指定なし';
+            var rbAfterTeam = getSegValue('modBlockReboundAfterTeamSeg') || 'home';
+            var rbAfterTeamName = rbAfterTeam === 'home' ? currentHomeName() : currentAwayName();
+            var rbAfterText = brAfterPlayer === 'チームリバウンド' ? brAfterPlayer : rbAfterTeamName + fmtPlayer(brAfterPlayer);
+            var rbClockMinEl = document.getElementById('modBlockReboundClockMin');
+            var rbClockSecEl = document.getElementById('modBlockReboundClockSec');
+            var rbClock = (rbClockMinEl && rbClockSecEl) ? (rbClockMinEl.value + ':' + rbClockSecEl.value) : clock;
+            lines.push('リバウンド(' + rbClock + '): ' + rbBeforeText + ' → ' + rbAfterText);
+          }
+        }
+      } else if (def.field === 'turnoverFull') {
+        var beforeOppTeamName = team === 'home' ? currentAwayName() : currentHomeName();
+        var beforeTypeText = buildTurnoverText('modBefore');
+        var beforeStealVal = getRosterVal(modPanelWrap, 'modBeforeStealPlayer');
+        var beforeStealText = beforeStealVal ? (beforeStealVal === 'スティールなし' ? beforeStealVal : beforeOppTeamName + fmtPlayer(beforeStealVal)) : '';
+        var beforeExtra = beforeTypeText + (beforeStealText ? '・スティール: ' + beforeStealText : '');
+
+        var afterTeam2 = getSegValue('modTurnoverAfterTeamSeg') || team;
+        var afterTeamName2 = afterTeam2 === 'home' ? currentHomeName() : currentAwayName();
+        var afterOppTeamName = afterTeam2 === 'home' ? currentAwayName() : currentHomeName();
+        var afterTurnoverVal = getRosterVal(modFieldsContainer, 'modAfterTurnoverPlayer');
+        var afterTypeText = buildTurnoverText('modAfter');
+        var afterStealVal = getRosterVal(modFieldsContainer, 'modAfterStealPlayer');
+        var afterStealText = afterStealVal ? (afterStealVal === 'スティールなし' ? afterStealVal : afterOppTeamName + fmtPlayer(afterStealVal)) : '';
+        var afterExtra = afterTypeText + (afterStealText ? '・スティール: ' + afterStealText : '');
+
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　のターンオーバー');
+        lines.push(teamName + subject + '(' + beforeExtra + ')' + ' → ' + (afterTeamName2 !== teamName ? afterTeamName2 : '') + fmtPlayer(afterTurnoverVal) + '(' + afterExtra + ')');
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+      } else if (def.field === 'foulFull') {
+        var foulOppTeamName = team === 'home' ? currentAwayName() : currentHomeName();
+        var afterFoulTeam = getSegValue('modFoulAfterTeamSeg') || team;
+        var afterFoulTeamName = afterFoulTeam === 'home' ? currentHomeName() : currentAwayName();
+        var afterFoulOppTeamName = afterFoulTeam === 'home' ? currentAwayName() : currentHomeName();
+        var beforeFoulPlayer = fmtPlayer(player);
+        var afterFoulPlayer = fmtPlayer(getRosterVal(modFieldsContainer, 'modAfterFoulPlayer'));
+        var beforeFoulType = val('modBeforeFoulType');
+        var afterFoulType = val('modAfterFoulType');
+        var beforeFoulOppVal = getRosterVal(modPanelWrap, 'modBeforeFoulOpponent');
+        var afterFoulOppVal = getRosterVal(modFieldsContainer, 'modAfterFoulOpponent');
+        var beforeFoulOppText = beforeFoulOppVal ? (beforeFoulOppVal === '相手なし' ? beforeFoulOppVal : foulOppTeamName + fmtPlayer(beforeFoulOppVal)) : '';
+        var afterFoulOppText = afterFoulOppVal ? (afterFoulOppVal === '相手なし' ? afterFoulOppVal : afterFoulOppTeamName + fmtPlayer(afterFoulOppVal)) : '';
+
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　のファウル');
+        if (afterFoulTeamName !== teamName) {
+          lines.push('チーム: ' + teamName + ' → ' + afterFoulTeamName);
+        }
+        if (afterFoulPlayer && (afterFoulPlayer !== beforeFoulPlayer || afterFoulTeamName !== teamName)) {
+          lines.push('ファウルした選手: ' + teamName + beforeFoulPlayer + ' → ' + afterFoulTeamName + afterFoulPlayer);
+        }
+        if (afterFoulType && afterFoulType !== beforeFoulType) {
+          lines.push('種類: ' + beforeFoulType + ' → ' + afterFoulType);
+        }
+        if (afterFoulOppText && afterFoulOppText !== beforeFoulOppText) {
+          lines.push('REC選手: ' + (beforeFoulOppText || '指定なし') + ' → ' + afterFoulOppText);
+        }
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+      } else if (def.field === 'subInOutFull') {
+        var subTeam = getSegValue('modSubTeamSeg') || 'home';
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　の選手交代');
+        var readMulti = function (id) {
+          var sel = document.getElementById(id);
+          return sel ? Array.prototype.filter.call(sel.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : [];
+        };
+        var sameSet = function (a, b) {
+          if (a.length !== b.length) return false;
+          var as = a.slice().sort(), bs = b.slice().sort();
+          return as.every(function (v, i) { return v === bs[i]; });
+        };
+        var fmtList = function (arr) { return arr.map(fmtPlayer).join(' '); };
+        var collectSub = function (teamKey, teamLabel) {
+          var cap = teamKey === 'home' ? 'Home' : 'Away';
+          var beforeIn = readMulti('modSubBeforeIn' + cap + 'Multi');
+          var afterIn = readMulti('modSubAfterIn' + cap + 'Multi');
+          var beforeOut = readMulti('modSubBeforeOut' + cap + 'Multi');
+          var afterOut = readMulti('modSubAfterOut' + cap + 'Multi');
+          if (!sameSet(afterIn, beforeIn)) {
+            lines.push(teamLabel + 'IN選手: ' + fmtList(beforeIn) + ' → ' + fmtList(afterIn));
+          }
+          if (!sameSet(afterOut, beforeOut)) {
+            lines.push(teamLabel + 'OUT選手: ' + fmtList(beforeOut) + ' → ' + fmtList(afterOut));
+          }
+        };
+        if (subTeam === 'home' || subTeam === 'both') collectSub('home', currentHomeName());
+        if (subTeam === 'away' || subTeam === 'both') collectSub('away', currentAwayName());
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+      } else if (def.field === 'onCourtFive') {
+        var ocTeam = getSegValue('modOnCourtTeamSeg') || 'home';
+        lines.push(period + ' ' + clock + 'の交代を　オンザコート');
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+        var collectOnCourt = function (teamKey, teamLabel) {
+          var cap = teamKey === 'home' ? 'Home' : 'Away';
+          var sel = document.getElementById('modOnCourt' + cap + 'Multi');
+          var nums = sel ? Array.prototype.filter.call(sel.options, function (o) { return o.selected; }).map(function (o) { return fmtPlayer(o.value); }) : [];
+          if (nums.length) lines.push(teamLabel + ': ' + nums.join(' ') + 'で入力してください。');
+        };
+        if (ocTeam === 'home' || ocTeam === 'both') collectOnCourt('home', currentHomeName());
+        if (ocTeam === 'away' || ocTeam === 'both') collectOnCourt('away', currentAwayName());
+      } else if (def.field === 'scoreMultiple') {
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + (subject ? ' ' + subject : '') + 'のシュート内容修正');
+        var mBeforePlayer = fmtPlayer(getRosterVal(modFieldsContainer, 'modMultiBeforePlayer'));
+        var mAfterPlayer = fmtPlayer(getRosterVal(modFieldsContainer, 'modMultiAfterPlayer'));
+        if (mAfterPlayer && mAfterPlayer !== mBeforePlayer) {
+          lines.push('シュート選手: ' + (mBeforePlayer || '指定なし') + ' → ' + mAfterPlayer);
+        }
+        var mPosMap = { '2P': '2ポイント', '3P': '3ポイント', 'ペイント内': 'ペイント内', FT: 'フリースロー' };
+        var mBeforePos = val('modMultiBeforePosition');
+        var mAfterPos = val('modMultiAfterPosition');
+        if (mAfterPos && mAfterPos !== mBeforePos) {
+          lines.push('シュート位置: ' + (mPosMap[mBeforePos] || mBeforePos) + ' → ' + (mPosMap[mAfterPos] || mAfterPos));
+        }
+        var mBeforeResult = val('modMultiBeforeResult');
+        var mAfterResult = val('modMultiAfterResult');
+        if (mAfterResult && mAfterResult !== mBeforeResult) {
+          lines.push('シュート結果: ' + mBeforeResult + ' → ' + mAfterResult);
+        }
+        var mBeforeStyle = val('modMultiBeforeShotStyle');
+        var mAfterStyle = val('modMultiAfterShotStyle');
+        if (mAfterStyle !== mBeforeStyle) {
+          lines.push('シュート種類: ' + (mBeforeStyle || '指定なし') + ' → ' + (mAfterStyle || '指定なし'));
+        }
+        var mBeforeFB = val('modMultiBeforeFastbreak');
+        var mAfterFB = val('modMultiAfterFastbreak');
+        if (mAfterFB && mAfterFB !== mBeforeFB) {
+          lines.push('ファストブレイク: ' + mBeforeFB + ' → ' + mAfterFB);
+        }
+        var mBeforeAssistRaw = getRosterVal(modFieldsContainer, 'modMultiBeforeAssist');
+        var mAfterAssistRaw = getRosterVal(modFieldsContainer, 'modMultiAfterAssist');
+        var mBeforeAssistText = mBeforeAssistRaw ? (mBeforeAssistRaw === 'アシストなし' ? mBeforeAssistRaw : fmtPlayer(mBeforeAssistRaw)) : '';
+        var mAfterAssistText = mAfterAssistRaw ? (mAfterAssistRaw === 'アシストなし' ? mAfterAssistRaw : fmtPlayer(mAfterAssistRaw)) : '';
+        if (mAfterAssistText && mAfterAssistText !== mBeforeAssistText) {
+          lines.push('アシスト: ' + (mBeforeAssistText || '指定なし') + ' → ' + mAfterAssistText);
+        }
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+      } else {
+        var beforeText, afterText;
+        var aspectLabel = def.label.replace(/\(背番号\)/g, '');
+        if (def.field === 'secondaryPlayer') {
+          beforeText = fmtPlayer(getRosterVal(modFieldsContainer, 'modBeforePlayer'));
+          afterText = fmtPlayer(getRosterVal(modFieldsContainer, 'modAfterPlayer'));
+        } else if (def.field === 'scorePosition') {
+          var posLabelMap = { '2P': '2ポイント', '3P': '3ポイント', 'ペイント内': 'ペイント内', FT: 'フリースロー' };
+          beforeText = posLabelMap[val('modBeforeScorePosition')] || val('modBeforeScorePosition');
+          afterText = posLabelMap[val('modAfterScorePosition')] || val('modAfterScorePosition');
+        } else if (def.field === 'scoreResult') {
+          beforeText = val('modBeforeScoreResultOnly');
+          afterText = val('modAfterScoreResultOnly');
+        } else if (def.field === 'shotStyleOnly') {
+          beforeText = val('modBeforeShotStyleOnly') || '指定なし';
+          afterText = val('modAfterShotStyleOnly') || '指定なし';
+        } else if (def.field === 'fastbreakOnly') {
+          beforeText = val('modBeforeFastbreakOnly');
+          afterText = val('modAfterFastbreakOnly');
+        } else if (def.field === 'freeText') {
+          beforeText = val('modBeforeFree');
+          afterText = val('modAfterFree');
+        }
+        if (modCategorySel.value === 'other') {
+          lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　その他');
+        } else if (modCategorySel.value === 'timeout') {
+          var toModTeamVal = getSegValue('modTimeoutTeamSeg') || 'home';
+          var toModTeamLabel = toModTeamVal === 'official' ? 'オフィシャルタイムアウト' : (toModTeamVal === 'home' ? currentHomeName() : currentAwayName()) + 'のタイムアウト';
+          lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + toModTeamLabel);
+        } else {
+          lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + (subject ? ' ' + subject : '') + 'の' + aspectLabel);
+        }
+        lines.push(beforeText + ' → ' + afterText);
+        if (clockPrefix) {
+          lines.push('クロック: ' + clock + ' → ' + afterClock);
+        }
+      }
+    } else if (panelPlayType(panelA) === 'substitution') {
+      if (correction === '削除') {
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　の交代を削除してください。');
+      } else {
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　の選手交代');
+        var readSubMulti = function (id) {
+          var sel = document.getElementById(id);
+          return sel ? Array.prototype.filter.call(sel.options, function (o) { return o.selected; }).map(function (o) { return o.value; }) : [];
+        };
+        var fmtSubList = function (arr) { return arr.map(fmtPlayer).join(' '); };
+        var collectPanelASub = function (teamKey, teamLabel) {
+          var cap = teamKey === 'home' ? 'Home' : 'Away';
+          var ins = readSubMulti('panelASubIn' + cap + 'Multi');
+          var outs = readSubMulti('panelASubOut' + cap + 'Multi');
+          var parts = [];
+          if (ins.length) parts.push('IN ' + fmtSubList(ins));
+          if (outs.length) parts.push('OUT ' + fmtSubList(outs));
+          if (parts.length) lines.push(teamLabel + ': ' + parts.join(' / '));
+        };
+        var subTeamVal = getSegValue('panelASubTeamSeg') || 'home';
+        if (subTeamVal === 'home' || subTeamVal === 'both') collectPanelASub('home', currentHomeName());
+        if (subTeamVal === 'away' || subTeamVal === 'both') collectPanelASub('away', currentAwayName());
+      }
+    } else if (panelPlayType(panelA) === 'timeout') {
+      var toTeamVal = getSegValue('f-timeoutTeamSeg') || 'home';
+      var toTeamLabel = toTeamVal === 'official' ? 'オフィシャルタイムアウト' : (toTeamVal === 'home' ? currentHomeName() : currentAwayName()) + 'のタイムアウト';
+      var toNoteVal = getVal(panelA, 'f-timeoutNote');
+      lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + toTeamLabel + (toNoteVal ? '(' + toNoteVal + ')' : ''));
+    } else {
+      var subject2 = needsPlayer ? fmtPlayer(player) : getSegValueIn(panelA, 'seg-foul-target');
+      lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + ' ' + subject2);
+      var detail = buildDetailLine(panelA);
+      lines.push('内容: ' + playLabels[panelPlayType(panelA)] + (detail ? ' / ' + detail : ''));
+    }
+
+    var memo = val('memo');
+    if (memo) lines.push('修正理由: ' + memo);
+
+    return { text: lines.join('\n'), team: team, teamName: teamName, period: period };
+  }
+
+  function loadHistory() {
+    try {
+      var raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveHistory(list) {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 300))); } catch (e) {}
+  }
+
+  var historyShowCount = 15;
+  var historyFilterExcluded = {};
+  var historyShowSent = true;
+  var historyShowConfirmed = true;
+  var historyExpandedOverride = {};
+
+  function periodSortKey(p) {
+    var qMatch = /^(\d+)Q$/.exec(p);
+    if (qMatch) return parseInt(qMatch[1], 10);
+    var otMatch = /^OT(\d+)$/.exec(p);
+    if (otMatch) return 100 + parseInt(otMatch[1], 10);
+    return 999;
+  }
+
+  function renderHistoryInner() {
+    var list = loadHistory();
+
+    var periods = [];
+    list.forEach(function (item) {
+      if (item.period && periods.indexOf(item.period) === -1) periods.push(item.period);
+    });
+    periods.sort(function (a, b) { return periodSortKey(a) - periodSortKey(b); });
+
+    var filterEl = document.getElementById('historyPeriodFilter');
+    filterEl.innerHTML = '';
+    periods.forEach(function (p) {
+      var label = document.createElement('label');
+      var isChecked = !historyFilterExcluded[p];
+      label.className = 'hist-check' + (isChecked ? ' on' : '');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = isChecked;
+      cb.addEventListener('change', function () {
+        if (cb.checked) { delete historyFilterExcluded[p]; }
+        else { historyFilterExcluded[p] = true; }
+        renderHistory();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(p));
+      filterEl.appendChild(label);
+    });
+
+    function appendStatusToggle(labelText, getVal, setVal) {
+      var label = document.createElement('label');
+      label.className = 'hist-check' + (getVal() ? ' on' : '');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = getVal();
+      cb.addEventListener('change', function () {
+        setVal(cb.checked);
+        renderHistory();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(labelText));
+      filterEl.appendChild(label);
+    }
+    appendStatusToggle('送信済みも表示', function () { return historyShowSent; }, function (v) { historyShowSent = v; });
+    appendStatusToggle('確認済みも表示', function () { return historyShowConfirmed; }, function (v) { historyShowConfirmed = v; });
+
+    var wrap = document.getElementById('historyList');
+    var moreBtn = document.getElementById('historyMoreBtn');
+
+    if (!list.length) {
+      wrap.innerHTML = '<p class="history-empty">まだ履歴はありません。</p>';
+      moreBtn.style.display = 'none';
+      return;
+    }
+
+    var filtered = [];
+    list.forEach(function (item, idx) {
+      if (item.period && historyFilterExcluded[item.period]) return;
+      if (item.sent && !historyShowSent) return;
+      if (item.confirmed && !historyShowConfirmed) return;
+      filtered.push({ item: item, idx: idx });
+    });
+
+    if (!filtered.length) {
+      wrap.innerHTML = '<p class="history-empty">該当する履歴がありません。</p>';
+      moreBtn.style.display = 'none';
+      return;
+    }
+
+    wrap.innerHTML = '';
+    var visible = filtered.slice(0, historyShowCount);
+    visible.forEach(function (entry) {
+      var item = entry.item;
+      var idx = entry.idx;
+      var key = item.id != null ? item.id : idx;
+      var isDone = !!(item.sent && item.confirmed);
+      var isMinimized = isDone && !historyExpandedOverride[key];
+
+      if (isMinimized) {
+        var miniRow = document.createElement('div');
+        miniRow.className = 'history-item minimized';
+
+        var miniText = document.createElement('div');
+        miniText.className = 'history-text-mini';
+        var miniBadge = document.createElement('span');
+        miniBadge.className = 'badge ' + item.team;
+        miniBadge.textContent = item.teamName || (item.team === 'home' ? 'ホーム' : 'アウェイ');
+        miniText.appendChild(miniBadge);
+        var oneLine = item.text.replace(/\n/g, ' ／ ');
+        var truncated = oneLine.length > 40 ? oneLine.slice(0, 40) + '…' : oneLine;
+        miniText.appendChild(document.createTextNode(truncated));
+        miniRow.appendChild(miniText);
+
+        var expandB = document.createElement('button');
+        expandB.className = 'icon-btn';
+        expandB.type = 'button';
+        expandB.textContent = '展開';
+        expandB.addEventListener('click', function () {
+          historyExpandedOverride[key] = true;
+          renderHistory();
+        });
+        miniRow.appendChild(expandB);
+
+        wrap.appendChild(miniRow);
+        return;
+      }
+
+      var row = document.createElement('div');
+      row.className = 'history-item';
+
+      var textWrap = document.createElement('div');
+      textWrap.className = 'history-text';
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + item.team;
+      badge.textContent = item.teamName || (item.team === 'home' ? 'ホーム' : 'アウェイ');
+      textWrap.appendChild(badge);
+      textWrap.appendChild(document.createTextNode(item.text));
+      row.appendChild(textWrap);
+
+      var right = document.createElement('div');
+      right.className = 'history-right';
+
+      var status = document.createElement('div');
+      status.className = 'history-status';
+
+      function makeCheck(labelText, key) {
+        var label = document.createElement('label');
+        label.className = 'hist-check';
+        if (item[key]) label.classList.add('on');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!item[key];
+        cb.addEventListener('change', function () {
+          var l = loadHistory();
+          if (!l[idx]) return;
+          l[idx][key] = cb.checked;
+          saveHistory(l);
+          renderHistory();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(labelText));
+        return label;
+      }
+      status.appendChild(makeCheck('送信済み', 'sent'));
+      status.appendChild(makeCheck('修正確認済み', 'confirmed'));
+      right.appendChild(status);
+
+      var actions = document.createElement('div');
+      actions.className = 'history-actions';
+
+      var copyB = document.createElement('button');
+      copyB.className = 'icon-btn';
+      copyB.type = 'button';
+      copyB.textContent = 'コピー';
+      copyB.addEventListener('click', function () { copyText(item.text, copyB); });
+      actions.appendChild(copyB);
+
+      var delB = document.createElement('button');
+      delB.className = 'icon-btn';
+      delB.type = 'button';
+      delB.textContent = '削除';
+      delB.addEventListener('click', function () {
+        var l = loadHistory();
+        l.splice(idx, 1);
+        saveHistory(l);
+        renderHistory();
+      });
+      actions.appendChild(delB);
+
+      if (isDone) {
+        var collapseB = document.createElement('button');
+        collapseB.className = 'icon-btn';
+        collapseB.type = 'button';
+        collapseB.textContent = '折りたたむ';
+        collapseB.addEventListener('click', function () {
+          delete historyExpandedOverride[key];
+          renderHistory();
+        });
+        actions.appendChild(collapseB);
+      }
+
+      right.appendChild(actions);
+      row.appendChild(right);
+      wrap.appendChild(row);
+    });
+
+    if (filtered.length > historyShowCount) {
+      moreBtn.style.display = '';
+      moreBtn.textContent = 'もっと見る(残り' + (filtered.length - historyShowCount) + '件)';
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  }
+
+  function renderHistory() {
+    var wrap = document.getElementById('historyList');
+    var startHeight = wrap.offsetHeight;
+    wrap.style.transition = '';
+    renderHistoryInner();
+    var endHeight = wrap.scrollHeight;
+    if (Math.abs(endHeight - startHeight) < 2) return;
+    wrap.style.overflow = 'hidden';
+    wrap.style.height = startHeight + 'px';
+    void wrap.offsetHeight;
+    requestAnimationFrame(function () {
+      wrap.style.transition = 'height 0.25s ease';
+      wrap.style.height = endHeight + 'px';
+    });
+    wrap.addEventListener('transitionend', function handler(e) {
+      if (e.propertyName && e.propertyName !== 'height') return;
+      wrap.style.transition = '';
+      wrap.style.height = '';
+      wrap.style.overflow = '';
+      wrap.removeEventListener('transitionend', handler);
+    });
+  }
+
+  document.getElementById('historyMoreBtn').addEventListener('click', function () {
+    historyShowCount += 15;
+    renderHistory();
+  });
+
+  function copyText(text, btn) {
+    function done() {
+      var original = btn.textContent;
+      btn.textContent = 'コピーしました';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, cb) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    cb();
+  }
+
+  var outputEl = document.getElementById('outputText');
+  var copyBtn = document.getElementById('copyBtn');
+  var currentText = '';
+
+  document.getElementById('generateBtn').addEventListener('click', function (e) {
+    var btn = e.currentTarget;
+    var result = generate();
+    if (!result) return;
+    currentText = result.text;
+    outputEl.textContent = result.text;
+    outputEl.classList.remove('output-empty');
+
+    var list = loadHistory();
+    list.unshift({ id: Date.now() + '_' + Math.random().toString(36).slice(2), text: result.text, team: result.team, teamName: result.teamName, period: result.period });
+    saveHistory(list);
+    renderHistory();
+
+    var resultColumn = document.getElementById('resultColumn');
+    if (resultColumn) resultColumn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    copyText(currentText, btn);
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (!currentText) return;
+    copyText(currentText, copyBtn);
+  });
+
+  function clickSegButton(containerId, val) {
+    var container = document.getElementById(containerId);
+    if (!container) return false;
+    var btn = container.querySelector('button[data-val="' + val + '"]');
+    if (btn) { btn.click(); return true; }
+    return false;
+  }
+
+  function clickRosterPick(baseCls, val) {
+    var hidden = document.getElementById(baseCls + '-select');
+    if (!hidden) return false;
+    var picker = hidden.closest('.roster-picker');
+    if (!picker) return false;
+    var grid = picker.querySelector('.roster-picker-grid');
+    var btn = grid ? grid.querySelector('button[data-val="' + val + '"]') : null;
+    if (btn) { btn.click(); return true; }
+    return false;
+  }
+
+  var SHOT_STYLE_MATCHERS = [
+    ['プットバックダンク', 'プットバックダンク'],
+    ['プットバックティップイン', 'プットバックティップイン'],
+    ['アリウープダンク', 'アリウープダンク'],
+    ['アリウープレイアップ', 'アリウープレイアップ'],
+    ['ドライビングレイアップ', 'ドライビングレイアップ'],
+    ['リバースレイアップ', 'リバースレイアップ'],
+    ['ユーロステップ', 'ユーロステップ'],
+    ['フックショット', 'フックショット'],
+    ['フローティングジャンプショット', 'フローティングジャンプショット'],
+    ['フェイドアウェイジャンプショット', 'フェイドアウェイジャンプショット'],
+    ['ターンアラウンドジャンプショット', 'ターンアラウンドジャンプショット'],
+    ['ステップバックジャンプショット', 'ステップバックジャンプショット'],
+    ['プルアップジャンプショット', 'プルアップジャンプショット'],
+    ['レイアップ', 'レイアップ'],
+    ['ダンク', 'ダンク'],
+    ['ジャンプショット', 'ジャンプシュート']
+  ];
+  function matchShotStyle(desc) {
+    for (var i = 0; i < SHOT_STYLE_MATCHERS.length; i++) {
+      if (desc.indexOf(SHOT_STYLE_MATCHERS[i][0]) !== -1) return SHOT_STYLE_MATCHERS[i][1];
+    }
+    return '';
+  }
+
+  var FOUL_TYPE_LIST = ['シューティングファウル', 'パーソナルファウル', 'オフェンスファウル', 'スローインファウル', 'テクニカルファウル', 'アンスポーツマンライクファウル', 'ディスクォリファイングファウル'];
+  function matchFoulType(desc) {
+    for (var i = 0; i < FOUL_TYPE_LIST.length; i++) {
+      if (desc.indexOf(FOUL_TYPE_LIST[i]) !== -1) return FOUL_TYPE_LIST[i];
+    }
+    return '';
+  }
+
+  var TURNOVER_TYPE_MATCHERS = [
+    ['バッドパス', 'バッドパス'],
+    ['ボールハンドリング', 'ボールハンドリング/ファンブル'],
+    ['ファンブル', 'ボールハンドリング/ファンブル'],
+    ['アウトオブバウンズ', 'アウトオブバウンズ'],
+    ['トラベリング', 'トラベリング'],
+    ['3秒バイオレーション', '3秒バイオレーション'],
+    ['5秒バイオレーション', '5秒バイオレーション'],
+    ['8秒バイオレーション', '8秒バイオレーション'],
+    ['ショットクロックバイオレーション', 'ショットクロックバイオレーション'],
+    ['24秒', 'ショットクロックバイオレーション'],
+    ['バックコートバイオレーション', 'バックコートバイオレーション'],
+    ['オフェンスゴールテンディング', 'オフェンスゴールテンディング'],
+    ['オフェンスファウル', 'オフェンスファウル'],
+    ['ダブルドリブル', 'ダブルドリブル'],
+    ['キャリング', 'キャリング/パーミング'],
+    ['パーミング', 'キャリング/パーミング']
+  ];
+  function matchTurnoverType(desc) {
+    for (var i = 0; i < TURNOVER_TYPE_MATCHERS.length; i++) {
+      if (desc.indexOf(TURNOVER_TYPE_MATCHERS[i][0]) !== -1) return TURNOVER_TYPE_MATCHERS[i][1];
+    }
+    return '';
+  }
+
+  function hasGenuineTurnoverKeyword(desc) {
+    var idx = desc.indexOf('ターンオーバー');
+    while (idx !== -1) {
+      if (desc.substring(Math.max(0, idx - 5), idx) !== 'オフェンス') return true;
+      idx = desc.indexOf('ターンオーバー', idx + 1);
+    }
+    return false;
+  }
+
+  var CATEGORY_LABELS = {
+    score: 'シュート', foul: 'ファウル', turnover: 'ターンオーバー', rebound: 'リバウンド',
+    block: 'ブロックショット', assist: 'アシスト', timeout: 'タイムアウト', substitution: '選手交代'
+  };
+
+  function parsePlayByPlayText(text) {
+    var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+
+    var actionIdx = -1, jersey = '', desc = '';
+    for (var i = 0; i < lines.length; i++) {
+      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
+      if (m) { actionIdx = i; jersey = m[1]; desc = lines[i]; break; }
+      if (/^(オフィシャルタイムアウト|タイムアウト)$/.test(lines[i])) { actionIdx = i; jersey = ''; desc = lines[i]; break; }
+    }
+    if (actionIdx === -1) return null;
+
+    var clock = null;
+    for (var w = 0; w <= 10 && !clock; w++) {
+      var candidates = w === 0 ? [actionIdx] : [actionIdx + w, actionIdx - w];
+      for (var k = 0; k < candidates.length; k++) {
+        var idx = candidates[k];
+        if (idx >= 0 && idx < lines.length) {
+          var cm = /^(\d{1,2}):(\d{2})$/.exec(lines[idx]);
+          if (cm) { clock = { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] }; break; }
+        }
+      }
+    }
+
+    var homeRoster = rosterData.home || [];
+    var awayRoster = rosterData.away || [];
+    var team = null;
+    if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+    else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+    if (desc === 'オフィシャルタイムアウト') team = 'official';
+
+    var category = null;
+    var detail = {};
+    if (hasGenuineTurnoverKeyword(desc)) {
+      category = 'turnover';
+      detail.turnoverType = matchTurnoverType(desc);
+    } else if (/パーソナルファウル|シューティングファウル|オフェンスファウル|スローインファウル|テクニカルファウル|アンスポーツマンライクファウル|ディスクォリファイングファウル/.test(desc)) {
+      category = 'foul';
+      detail.foulType = matchFoulType(desc);
+    } else if (desc.indexOf('フリースロー') !== -1) {
+      category = 'score';
+      detail.position = 'FT';
+      detail.made = desc.indexOf('○') !== -1;
+    } else if (desc.indexOf('3Pシュート') !== -1) {
+      category = 'score';
+      detail.position = '3P';
+      detail.made = desc.indexOf('○') !== -1;
+      detail.style = matchShotStyle(desc);
+    } else if (desc.indexOf('2Pシュート') !== -1) {
+      category = 'score';
+      detail.position = desc.indexOf('インサイドペイント') !== -1 ? 'ペイント内' : '2P';
+      detail.made = desc.indexOf('○') !== -1;
+      detail.style = matchShotStyle(desc);
+    } else if (desc.indexOf('バスケットカウント') !== -1) {
+      category = 'score';
+      detail.made = true;
+    } else if (desc.indexOf('ブロックショット') !== -1) {
+      category = 'block';
+    } else if (desc.indexOf('オフェンスリバウンド') !== -1 || desc.indexOf('ディフェンスリバウンド') !== -1) {
+      category = 'rebound';
+    } else if (desc.indexOf('アシスト') !== -1) {
+      category = 'assist';
+    } else if (desc.indexOf('プレイヤーイン') !== -1 || desc.indexOf('プレイヤーアウト') !== -1) {
+      category = 'substitution';
+    } else if (desc.indexOf('タイムアウト') !== -1) {
+      category = 'timeout';
+    }
+
+    if (!category) return null;
+    detail.fastbreak = desc.indexOf('ファストブレイク') !== -1;
+
+    return { jersey: jersey, team: team, clock: clock, category: category, detail: detail };
+  }
+
+  function applyParsedPlay(parsed) {
+    modCategorySel.value = parsed.category;
+    renderModAspectOptions();
+
+    if (parsed.category === 'score') {
+      clickSegButton('modAspectSeg', 'multiple');
+    }
+
+    if (parsed.team && parsed.category !== 'timeout') {
+      clickSegButton('modTeamSeg', parsed.team);
+    }
+
+    if (parsed.category === 'timeout' && parsed.team) {
+      clickSegButton('modTimeoutTeamSeg', parsed.team);
+    }
+
+    if (parsed.clock) {
+      clockMinSel.value = parsed.clock.min;
+      clockSecSel.value = parsed.clock.sec;
+      if (!modAfterClockOpen) syncAfterClockDefault();
+    }
+
+    if (parsed.jersey && parsed.team && parsed.category !== 'timeout' && parsed.category !== 'assist') {
+      clickRosterPick('modPlayer', parsed.jersey);
+    }
+
+    if (parsed.category === 'assist') {
+      if (parsed.jersey) {
+        clickRosterPick('modBeforePlayer', parsed.jersey);
+        clickRosterPick('modAfterPlayer', parsed.jersey);
+      }
+    } else if (parsed.category === 'score') {
+      if (parsed.jersey && parsed.team) clickRosterPick('modMultiBeforePlayer', parsed.jersey);
+      if (parsed.detail.position) clickSegButton('modMultiBeforePositionSeg', parsed.detail.position);
+      if (parsed.detail.made !== undefined) clickSegButton('modMultiBeforeResultSeg', parsed.detail.made ? 'カウント' : 'アウト');
+      if (parsed.detail.style) {
+        var styleSel = document.getElementById('modMultiBeforeShotStyle');
+        if (styleSel) styleSel.value = parsed.detail.style;
+      }
+      if (parsed.detail.fastbreak) clickSegButton('modMultiBeforeFastbreakSeg', 'ファストブレイクあり');
+
+      // mirror before -> after, so only fields the user actually edits show up as a change
+      if (parsed.jersey && parsed.team) clickRosterPick('modMultiAfterPlayer', parsed.jersey);
+      if (parsed.detail.position) clickSegButton('modMultiAfterPositionSeg', parsed.detail.position);
+      if (parsed.detail.made !== undefined) clickSegButton('modMultiAfterResultSeg', parsed.detail.made ? 'カウント' : 'アウト');
+      if (parsed.detail.style) {
+        var afterStyleSel = document.getElementById('modMultiAfterShotStyle');
+        if (afterStyleSel) afterStyleSel.value = parsed.detail.style;
+      }
+      if (parsed.detail.fastbreak) clickSegButton('modMultiAfterFastbreakSeg', 'ファストブレイクあり');
+    } else if (parsed.category === 'foul' && parsed.detail.foulType) {
+      var fSel = document.getElementById('modBeforeFoulType');
+      if (fSel) fSel.value = parsed.detail.foulType;
+
+      if (parsed.team) clickSegButton('modFoulAfterTeamSeg', parsed.team);
+      if (parsed.jersey && parsed.team) clickRosterPick('modAfterFoulPlayer', parsed.jersey);
+      var afterFoulSel = document.getElementById('modAfterFoulType');
+      if (afterFoulSel) afterFoulSel.value = parsed.detail.foulType;
+    } else if (parsed.category === 'turnover' && parsed.detail.turnoverType) {
+      var tSel = document.getElementById('modBeforeTurnoverType');
+      if (tSel) tSel.value = parsed.detail.turnoverType;
+
+      if (parsed.team) clickSegButton('modTurnoverAfterTeamSeg', parsed.team);
+      if (parsed.jersey && parsed.team) clickRosterPick('modAfterTurnoverPlayer', parsed.jersey);
+      var afterTurnoverSel = document.getElementById('modAfterTurnoverType');
+      if (afterTurnoverSel) afterTurnoverSel.value = parsed.detail.turnoverType;
+    }
+  }
+
+  var PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE = {
+    score: 'score', foul: 'foul', turnover: 'turnover', substitution: 'substitution', timeout: 'timeout',
+    rebound: 'other', block: 'other', assist: 'other'
+  };
+
+  function applyParsedPlayToPanelA(parsed) {
+    var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
+    var playTypeSel = document.getElementById('f-playType');
+    playTypeSel.value = playType;
+    playTypeSel.dispatchEvent(new Event('change'));
+
+    if (parsed.clock) {
+      clockMinSel.value = parsed.clock.min;
+      clockSecSel.value = parsed.clock.sec;
+    }
+
+    if (playType === 'timeout') {
+      if (parsed.team) clickSegButton('f-timeoutTeamSeg', parsed.team);
+    } else {
+      if (parsed.team) clickSegButton('panelATeamSeg', parsed.team);
+      if (parsed.jersey && parsed.team) clickRosterPick('panelAPlayer', parsed.jersey);
+    }
+
+    if (playType === 'score') {
+      if (parsed.detail.position) clickSegButton('f-scoreTypeSeg', parsed.detail.position);
+      if (parsed.detail.made !== undefined) clickSegButton('f-scoreResultSeg', parsed.detail.made ? 'カウント' : 'アウト');
+      if (parsed.detail.style) {
+        var styleSel = document.getElementById('f-scoreShotStyle');
+        if (styleSel) styleSel.value = parsed.detail.style;
+      }
+      if (parsed.detail.fastbreak) {
+        var fbBtn = document.querySelector('#panelA .f-scoreFastbreak button[data-val="ファストブレイクあり"]');
+        if (fbBtn) fbBtn.click();
+      }
+    } else if (playType === 'foul' && parsed.detail.foulType) {
+      var foulSel = document.getElementById('f-foulType');
+      if (foulSel) foulSel.value = parsed.detail.foulType;
+    } else if (playType === 'turnover' && parsed.detail.turnoverType) {
+      var toSel = document.getElementById('f-turnoverType');
+      if (toSel) toSel.value = parsed.detail.turnoverType;
+    } else if (playType === 'other') {
+      var noteEl = document.getElementById('f-otherNote');
+      if (noteEl) noteEl.value = CATEGORY_LABELS[parsed.category] || parsed.category;
+    }
+
+    updatePanelAPlayerRequirement();
+  }
+
+  document.getElementById('modPasteBtn').addEventListener('click', function () {
+    var text = document.getElementById('modPasteInput').value;
+    var resultEl = document.getElementById('modPasteResult');
+    var parsed = parsePlayByPlayText(text);
+    if (!parsed) {
+      resultEl.textContent = 'プレー内容を認識できませんでした。手動で入力してください。';
+      return;
+    }
+    applyParsedPlay(parsed);
+    var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
+    parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
+    if (parsed.jersey) parts.push('背番号: #' + parsed.jersey);
+    parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
+    resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。修正後の欄にも同じ内容を入れてあるので、間違っている項目だけ変更してください。';
+  });
+
+  document.getElementById('modPasteClearBtn').addEventListener('click', function () {
+    document.getElementById('modPasteInput').value = '';
+    document.getElementById('modPasteResult').textContent = '';
+  });
+
+  document.getElementById('panelAPasteBtn').addEventListener('click', function () {
+    var text = document.getElementById('panelAPasteInput').value;
+    var resultEl = document.getElementById('panelAPasteResult');
+    var parsed = parsePlayByPlayText(text);
+    if (!parsed) {
+      resultEl.textContent = 'プレー内容を認識できませんでした。手動で入力してください。';
+      return;
+    }
+    applyParsedPlayToPanelA(parsed);
+    var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
+    var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
+    parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
+    if (parsed.jersey) parts.push('背番号: #' + parsed.jersey);
+    parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
+    var note = playType === 'other' ? ' 「その他」欄に自動入力したので、内容を確認・修正してください。' : ' 読み取れなかった項目や間違っている項目は手動で直してください。';
+    resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。' + note;
+  });
+
+  document.getElementById('panelAPasteClearBtn').addEventListener('click', function () {
+    document.getElementById('panelAPasteInput').value = '';
+    document.getElementById('panelAPasteResult').textContent = '';
+  });
+
+  renderHistory();
+})();
+</script>
+</body>
+</html>
