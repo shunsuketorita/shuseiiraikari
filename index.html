@@ -492,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 01:01</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 01:06</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2761,7 +2761,10 @@ textarea { resize: vertical; min-height: 56px; }
   }
 
   function findCompanionJersey(lines, actionIdx, keyword) {
-    for (var i = actionIdx + 1; i <= Math.min(actionIdx + 3, lines.length - 1); i++) {
+    // a wide-ish window: an offensive foul is logged as its own foul line *and* its own
+    // turnover line for the same player, which can push the opponent's companion line
+    // (e.g. ファウルドローン/スティール) two event-blocks away instead of one
+    for (var i = actionIdx + 1; i <= Math.min(actionIdx + 9, lines.length - 1); i++) {
       var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
       if (m && m[2].indexOf(keyword) !== -1) return m[1];
     }
@@ -2839,11 +2842,14 @@ textarea { resize: vertical; min-height: 56px; }
 
     var homeRoster = rosterData.home || [];
     var awayRoster = rosterData.away || [];
-    var team = null;
-    if (homeRoster.indexOf(jersey) !== -1) team = 'home';
-    else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+    // the team-name line is unambiguous; a jersey number can be worn by a player on
+    // each team, so only fall back to roster lookup when the text doesn't resolve it
+    var team = findNearbyTeamName(lines, actionIdx);
+    if (!team) {
+      if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+      else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+    }
     if (desc === 'オフィシャルタイムアウト') team = 'official';
-    if (!team) team = findNearbyTeamName(lines, actionIdx);
 
     var category = classified.category;
     var detail = classified.detail;
@@ -2874,10 +2880,11 @@ textarea { resize: vertical; min-height: 56px; }
       var m = /^#(\d+)\s+\S+\s+(プレイヤーイン|プレイヤーアウト)$/.exec(lines[i]);
       if (!m) continue;
       var jersey = m[1];
-      var team = null;
-      if (homeRoster.indexOf(jersey) !== -1) team = 'home';
-      else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
-      if (!team) team = findNearbyTeamName(lines, i);
+      var team = findNearbyTeamName(lines, i);
+      if (!team) {
+        if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+        else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+      }
       if (!team || team === 'official') continue;
       var bucket = moves[team][m[2] === 'プレイヤーイン' ? 'in' : 'out'];
       if (bucket.indexOf(jersey) === -1) bucket.push(jersey);
