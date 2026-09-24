@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-19 13:00</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-24 23:28</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2700,36 +2700,7 @@ textarea { resize: vertical; min-height: 56px; }
     block: 'ブロックショット', assist: 'アシスト', timeout: 'タイムアウト', substitution: '選手交代'
   };
 
-  function parsePlayByPlayText(text) {
-    var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
-
-    var actionIdx = -1, jersey = '', desc = '';
-    for (var i = 0; i < lines.length; i++) {
-      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
-      if (m) { actionIdx = i; jersey = m[1]; desc = lines[i]; break; }
-      if (/^(オフィシャルタイムアウト|タイムアウト)$/.test(lines[i])) { actionIdx = i; jersey = ''; desc = lines[i]; break; }
-    }
-    if (actionIdx === -1) return null;
-
-    var clock = null;
-    for (var w = 0; w <= 10 && !clock; w++) {
-      var candidates = w === 0 ? [actionIdx] : [actionIdx + w, actionIdx - w];
-      for (var k = 0; k < candidates.length; k++) {
-        var idx = candidates[k];
-        if (idx >= 0 && idx < lines.length) {
-          var cm = /^(\d{1,2}):(\d{2})$/.exec(lines[idx]);
-          if (cm) { clock = { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] }; break; }
-        }
-      }
-    }
-
-    var homeRoster = rosterData.home || [];
-    var awayRoster = rosterData.away || [];
-    var team = null;
-    if (homeRoster.indexOf(jersey) !== -1) team = 'home';
-    else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
-    if (desc === 'オフィシャルタイムアウト') team = 'official';
-
+  function classifyPlayDesc(desc) {
     var category = null;
     var detail = {};
     if (hasGenuineTurnoverKeyword(desc)) {
@@ -2766,9 +2737,64 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (desc.indexOf('タイムアウト') !== -1) {
       category = 'timeout';
     }
-
     if (!category) return null;
     detail.fastbreak = desc.indexOf('ファストブレイク') !== -1;
+    return { category: category, detail: detail };
+  }
+
+  function findCompanionJersey(lines, actionIdx, keyword) {
+    for (var i = actionIdx + 1; i <= Math.min(actionIdx + 3, lines.length - 1); i++) {
+      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
+      if (m && m[2].indexOf(keyword) !== -1) return m[1];
+    }
+    return '';
+  }
+
+  function parsePlayByPlayText(text) {
+    var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+
+    var actionIdx = -1, jersey = '', desc = '', classified = null;
+    for (var i = 0; i < lines.length; i++) {
+      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
+      if (m) {
+        var c = classifyPlayDesc(lines[i]);
+        if (c) { actionIdx = i; jersey = m[1]; desc = lines[i]; classified = c; break; }
+        continue;
+      }
+      if (/^(オフィシャルタイムアウト|タイムアウト)$/.test(lines[i])) {
+        actionIdx = i; jersey = ''; desc = lines[i]; classified = classifyPlayDesc(lines[i]); break;
+      }
+    }
+    if (actionIdx === -1 || !classified) return null;
+
+    var clock = null;
+    for (var w = 0; w <= 10 && !clock; w++) {
+      var candidates = w === 0 ? [actionIdx] : [actionIdx + w, actionIdx - w];
+      for (var k = 0; k < candidates.length; k++) {
+        var idx = candidates[k];
+        if (idx >= 0 && idx < lines.length) {
+          var cm = /^(\d{1,2}):(\d{2})$/.exec(lines[idx]);
+          if (cm) { clock = { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] }; break; }
+        }
+      }
+    }
+
+    var homeRoster = rosterData.home || [];
+    var awayRoster = rosterData.away || [];
+    var team = null;
+    if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+    else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+    if (desc === 'オフィシャルタイムアウト') team = 'official';
+
+    var category = classified.category;
+    var detail = classified.detail;
+    if (category === 'foul') {
+      var foulOnJersey = findCompanionJersey(lines, actionIdx, 'ファウルドローン');
+      if (foulOnJersey) detail.foulOn = foulOnJersey;
+    } else if (category === 'turnover') {
+      var stealJersey = findCompanionJersey(lines, actionIdx, 'スティール');
+      if (stealJersey) detail.steal = stealJersey;
+    }
 
     return { jersey: jersey, team: team, clock: clock, category: category, detail: detail };
   }
@@ -2826,17 +2852,29 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (parsed.category === 'foul' && parsed.detail.foulType) {
       var fSel = document.getElementById('modBeforeFoulType');
       if (fSel) fSel.value = parsed.detail.foulType;
+      if (parsed.detail.foulOn) {
+        clickRosterPick('modBeforeFoulOpponent', parsed.detail.foulOn);
+      }
 
       if (parsed.team) clickSegButton('modFoulAfterTeamSeg', parsed.team);
       if (parsed.jersey && parsed.team) clickRosterPick('modAfterFoulPlayer', parsed.jersey);
+      if (parsed.detail.foulOn) {
+        clickRosterPick('modAfterFoulOpponent', parsed.detail.foulOn);
+      }
       var afterFoulSel = document.getElementById('modAfterFoulType');
       if (afterFoulSel) afterFoulSel.value = parsed.detail.foulType;
     } else if (parsed.category === 'turnover' && parsed.detail.turnoverType) {
       var tSel = document.getElementById('modBeforeTurnoverType');
       if (tSel) tSel.value = parsed.detail.turnoverType;
+      if (parsed.detail.steal) {
+        clickRosterPick('modBeforeStealPlayer', parsed.detail.steal);
+      }
 
       if (parsed.team) clickSegButton('modTurnoverAfterTeamSeg', parsed.team);
       if (parsed.jersey && parsed.team) clickRosterPick('modAfterTurnoverPlayer', parsed.jersey);
+      if (parsed.detail.steal) {
+        clickRosterPick('modAfterStealPlayer', parsed.detail.steal);
+      }
       var afterTurnoverSel = document.getElementById('modAfterTurnoverType');
       if (afterTurnoverSel) afterTurnoverSel.value = parsed.detail.turnoverType;
     }
@@ -2879,9 +2917,11 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (playType === 'foul' && parsed.detail.foulType) {
       var foulSel = document.getElementById('f-foulType');
       if (foulSel) foulSel.value = parsed.detail.foulType;
+      if (parsed.detail.foulOn) clickRosterPick('f-foulOn', parsed.detail.foulOn);
     } else if (playType === 'turnover' && parsed.detail.turnoverType) {
       var toSel = document.getElementById('f-turnoverType');
       if (toSel) toSel.value = parsed.detail.turnoverType;
+      if (parsed.detail.steal) clickRosterPick('f-turnoverSteal', parsed.detail.steal);
     } else if (playType === 'other') {
       var noteEl = document.getElementById('f-otherNote');
       if (noteEl) noteEl.value = CATEGORY_LABELS[parsed.category] || parsed.category;
