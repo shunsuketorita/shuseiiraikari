@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:26</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:29</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -1841,7 +1841,7 @@ textarea { resize: vertical; min-height: 56px; }
     modPlayerWrap.querySelector('label').textContent = modSubjectLabelFor(modCategorySel.value);
     document.getElementById('modTurnoverBeforeExtra').style.display = (modCategorySel.value === 'turnover') ? '' : 'none';
     document.getElementById('modFoulBeforeExtra').style.display = (modCategorySel.value === 'foul') ? '' : 'none';
-    var recordHidden = modCategorySel.value === 'other' || modCategorySel.value === 'timeout';
+    var recordHidden = modCategorySel.value === 'other' || modCategorySel.value === 'timeout' || modCategorySel.value === 'substitution';
     document.getElementById('modRecordLabel').style.display = recordHidden ? 'none' : '';
     document.getElementById('modRecordRow').style.display = recordHidden ? 'none' : '';
     document.getElementById('modTimeoutTeamRow').style.display = modCategorySel.value === 'timeout' ? '' : 'none';
@@ -1873,7 +1873,7 @@ textarea { resize: vertical; min-height: 56px; }
     var isSub = type === 'substitution';
     var isTimeout = type === 'timeout';
     if (panelATeamPlayerRow) {
-      panelATeamPlayerRow.style.display = ((isSub && correction === '削除') || isTimeout) ? 'none' : '';
+      panelATeamPlayerRow.style.display = (isSub || isTimeout) ? 'none' : '';
     }
     if (!isSub) return;
     if (correction === '削除') {
