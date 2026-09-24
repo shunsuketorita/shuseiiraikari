@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:14</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:16</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -713,7 +713,7 @@ textarea { resize: vertical; min-height: 56px; }
               <label for="f-turnoverType">種別(FIBA分類)</label>
               <select class="f-turnoverType" id="f-turnoverType">
                 <option value="バッドパス">バッドパス</option>
-                <option value="ボールハンドリング/ファンブル">ボールハンドリング / ファンブル</option>
+                <option value="ボールハンドリング">ボールハンドリング</option>
                 <option value="アウトオブバウンズ">アウトオブバウンズ</option>
                 <option value="トラベリング">トラベリング</option>
                 <option value="3秒バイオレーション">3秒バイオレーション</option>
@@ -1513,7 +1513,7 @@ textarea { resize: vertical; min-height: 56px; }
 
   var turnoverTypeOptionsHTML =
     '<option value="バッドパス">バッドパス</option>' +
-    '<option value="ボールハンドリング/ファンブル">ボールハンドリング / ファンブル</option>' +
+    '<option value="ボールハンドリング">ボールハンドリング</option>' +
     '<option value="アウトオブバウンズ">アウトオブバウンズ</option>' +
     '<option value="トラベリング">トラベリング</option>' +
     '<option value="3秒バイオレーション">3秒バイオレーション</option>' +
@@ -2663,8 +2663,8 @@ textarea { resize: vertical; min-height: 56px; }
 
   var TURNOVER_TYPE_MATCHERS = [
     ['バッドパス', 'バッドパス'],
-    ['ボールハンドリング', 'ボールハンドリング/ファンブル'],
-    ['ファンブル', 'ボールハンドリング/ファンブル'],
+    ['ボールハンドリング', 'ボールハンドリング'],
+    ['ファンブル', 'ボールハンドリング'],
     ['アウトオブバウンズ', 'アウトオブバウンズ'],
     ['トラベリング', 'トラベリング'],
     ['3秒バイオレーション', '3秒バイオレーション'],
