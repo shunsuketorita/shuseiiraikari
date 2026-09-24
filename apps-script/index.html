@@ -492,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:48</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 01:01</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2210,15 +2210,16 @@ textarea { resize: vertical; min-height: 56px; }
         if (ocTeam === 'home' || ocTeam === 'both') collectOnCourt('home', currentHomeName());
         if (ocTeam === 'away' || ocTeam === 'both') collectOnCourt('away', currentAwayName());
       } else if (def.field === 'scoreMultiple') {
-        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + (subject ? ' ' + subject : '') + 'のシュート内容修正');
+        var mPosMap = { '2P': '2ポイント', '3P': '3ポイント', 'ペイント内': 'ペイント内', FT: 'フリースロー' };
+        var mBeforePos = val('modMultiBeforePosition');
+        var mAfterPos = val('modMultiAfterPosition');
+        var scoreKindLabel = (mBeforePos === 'FT' || mAfterPos === 'FT') ? 'フリースロー' : 'シュート';
+        lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　' + teamName + (subject ? ' ' + subject : '') + 'の' + scoreKindLabel + '内容修正');
         var mBeforePlayer = fmtPlayer(getRosterVal(modFieldsContainer, 'modMultiBeforePlayer'));
         var mAfterPlayer = fmtPlayer(getRosterVal(modFieldsContainer, 'modMultiAfterPlayer'));
         if (mAfterPlayer && mAfterPlayer !== mBeforePlayer) {
           lines.push('シュート選手: ' + (mBeforePlayer || '指定なし') + ' → ' + mAfterPlayer);
         }
-        var mPosMap = { '2P': '2ポイント', '3P': '3ポイント', 'ペイント内': 'ペイント内', FT: 'フリースロー' };
-        var mBeforePos = val('modMultiBeforePosition');
-        var mAfterPos = val('modMultiAfterPosition');
         if (mAfterPos && mAfterPos !== mBeforePos) {
           lines.push('シュート位置: ' + (mPosMap[mBeforePos] || mBeforePos) + ' → ' + (mPosMap[mAfterPos] || mAfterPos));
         }
