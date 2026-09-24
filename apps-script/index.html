@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:00</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:07</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2750,6 +2750,19 @@ textarea { resize: vertical; min-height: 56px; }
     return '';
   }
 
+  function parseClockLine(line) {
+    var cm = /^(\d{1,2}):(\d{2})$/.exec(line);
+    if (cm) return { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] };
+    var cm2 = /^残り(\d{1,2})分(\d{1,2})秒$/.exec(line);
+    if (cm2) {
+      return {
+        min: cm2[1].length < 2 ? ('0' + cm2[1]) : cm2[1],
+        sec: cm2[2].length < 2 ? ('0' + cm2[2]) : cm2[2]
+      };
+    }
+    return null;
+  }
+
   function findNearbyTeamName(lines, actionIdx) {
     var home = currentHomeName();
     var away = currentAwayName();
@@ -2793,8 +2806,8 @@ textarea { resize: vertical; min-height: 56px; }
       for (var k = 0; k < candidates.length; k++) {
         var idx = candidates[k];
         if (idx >= 0 && idx < lines.length) {
-          var cm = /^(\d{1,2}):(\d{2})$/.exec(lines[idx]);
-          if (cm) { clock = { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] }; break; }
+          clock = parseClockLine(lines[idx]);
+          if (clock) break;
         }
       }
     }
