@@ -492,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 01:06</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 01:15</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2771,6 +2771,45 @@ textarea { resize: vertical; min-height: 56px; }
     return '';
   }
 
+  function hasNearbyBlockLine(lines, actionIdx) {
+    for (var i = actionIdx + 1; i <= Math.min(actionIdx + 3, lines.length - 1); i++) {
+      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
+      if (m && m[2].indexOf('ブロックショット') !== -1) return true;
+    }
+    return false;
+  }
+
+  function findCompanionRebound(lines, actionIdx) {
+    var homeRoster = rosterData.home || [];
+    var awayRoster = rosterData.away || [];
+    for (var i = actionIdx + 1; i <= Math.min(actionIdx + 6, lines.length - 1); i++) {
+      var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
+      if (!m || (m[2].indexOf('オフェンスリバウンド') === -1 && m[2].indexOf('ディフェンスリバウンド') === -1)) continue;
+      var jersey = m[1];
+      var team = findNearbyTeamName(lines, i);
+      if (!team) {
+        if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+        else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+      }
+      // an action line is normally preceded by its own clock 2 lines back
+      // (clock/team/action); check that fixed spot before falling back to a
+      // wider search, since the *next* event's clock can otherwise be closer
+      var clock = parseClockLine(lines[i - 2]);
+      for (var w = 0; w <= 3 && !clock; w++) {
+        var candidates = w === 0 ? [i] : [i - w, i + w];
+        for (var k = 0; k < candidates.length; k++) {
+          var idx = candidates[k];
+          if (idx >= 0 && idx < lines.length) {
+            clock = parseClockLine(lines[idx]);
+            if (clock) break;
+          }
+        }
+      }
+      return { jersey: jersey, team: team, clock: clock };
+    }
+    return null;
+  }
+
   function parseClockLine(line) {
     var cm = /^(\d{1,2}):(\d{2})$/.exec(line);
     if (cm) return { min: cm[1].length < 2 ? ('0' + cm[1]) : cm[1], sec: cm[2] };
@@ -2807,7 +2846,14 @@ textarea { resize: vertical; min-height: 56px; }
       var m = /^#(\d+)\s+\S+\s+(.+)$/.exec(lines[i]);
       if (m) {
         var c = classifyPlayDesc(lines[i]);
-        if (c) { actionIdx = i; jersey = m[1]; desc = lines[i]; classified = c; break; }
+        if (c) {
+          // a missed shot immediately blocked is better corrected as the block (and
+          // optionally its rebound) than as the shot itself — keep scanning for it
+          if (c.category === 'score' && c.detail.made === false && hasNearbyBlockLine(lines, i)) {
+            continue;
+          }
+          actionIdx = i; jersey = m[1]; desc = lines[i]; classified = c; break;
+        }
         if (m[2].indexOf('ファウルドローン') !== -1) {
           // no accompanying foul line found for this player — they're the one fouled
           // (REC), so leave the fouling player blank and fill the opponent field instead
@@ -2828,7 +2874,10 @@ textarea { resize: vertical; min-height: 56px; }
     }
     if (actionIdx === -1 || !classified) return null;
 
-    var clock = null;
+    // an action line is normally preceded by its own clock 2 lines back
+    // (clock/team/action); check that fixed spot before falling back to a
+    // wider search, since the *next* event's clock can otherwise be closer
+    var clock = parseClockLine(lines[actionIdx - 2]);
     for (var w = 0; w <= 10 && !clock; w++) {
       var candidates = w === 0 ? [actionIdx] : [actionIdx + w, actionIdx - w];
       for (var k = 0; k < candidates.length; k++) {
@@ -2867,6 +2916,9 @@ textarea { resize: vertical; min-height: 56px; }
       if (stealJersey) detail.steal = stealJersey;
     } else if (category === 'substitution') {
       detail.subMoves = collectSubstitutionMoves(lines);
+    } else if (category === 'block') {
+      var rebound = findCompanionRebound(lines, actionIdx);
+      if (rebound) detail.rebound = rebound;
     }
 
     return { jersey: jersey, team: team, clock: clock, category: category, detail: detail };
@@ -2990,6 +3042,26 @@ textarea { resize: vertical; min-height: 56px; }
       // mirror before -> after, so only fields the user actually edits show up as a change
       if (parsed.team) clickSegButton('modAfterPlayerTeamSeg', parsed.team);
       if (parsed.jersey) clickRosterPick('modAfterPlayer', parsed.jersey);
+
+      if (parsed.category === 'block' && parsed.detail.rebound) {
+        var rb = parsed.detail.rebound;
+        var brToggle = document.getElementById('modBlockReboundToggle');
+        if (brToggle && brToggle.textContent === 'リバウンドも修正する') brToggle.click();
+        if (rb.team) {
+          clickSegButton('modBlockReboundBeforeTeamSeg', rb.team);
+          clickSegButton('modBlockReboundAfterTeamSeg', rb.team);
+        }
+        if (rb.jersey) {
+          clickRosterPick('modBlockReboundBeforePlayer', rb.jersey);
+          clickRosterPick('modBlockReboundAfterPlayer', rb.jersey);
+        }
+        if (rb.clock) {
+          var brClockMinEl = document.getElementById('modBlockReboundClockMin');
+          var brClockSecEl = document.getElementById('modBlockReboundClockSec');
+          if (brClockMinEl) brClockMinEl.value = rb.clock.min;
+          if (brClockSecEl) brClockSecEl.value = rb.clock.sec;
+        }
+      }
     } else if (parsed.category === 'substitution' && parsed.detail.subMoves) {
       var moves = parsed.detail.subMoves;
       clickSegButton('modSubTeamSeg', subTeamSegValueFor(moves));
