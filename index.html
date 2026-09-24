@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:29</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:38</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -1121,13 +1121,17 @@ textarea { resize: vertical; min-height: 56px; }
     updateRosterAddBtn(team);
   }
 
+  var rosterInputChangeTimer = null;
   function onRosterInputChange(team) {
     var grid = rosterGridEl(team);
     rosterData[team] = Array.prototype.map.call(grid.querySelectorAll('.roster-slot'), function (inp) {
       return inp.value.trim();
     });
     saveRosterData();
-    refreshAllRosterSelects();
+    // rebuilding every roster picker on the page is expensive; wait for a pause in typing
+    // instead of doing it on every keystroke
+    clearTimeout(rosterInputChangeTimer);
+    rosterInputChangeTimer = setTimeout(refreshAllRosterSelects, 200);
   }
 
   function addRosterSlot(team) {
@@ -1248,6 +1252,28 @@ textarea { resize: vertical; min-height: 56px; }
       '</div></div>';
   }
 
+  function rosterOptionsHTML(teamKey) {
+    return getRoster(teamKey).map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
+  }
+
+  // Shared by the modification panel's "IN/OUT選手" fields (before+after, 4 selects) and
+  // the insert/delete panel's substitution block (1 set, 2 selects).
+  function substitutionTeamBlockHTML(teamKey, teamLabel, idPrefix, fieldSpecs) {
+    var cap = teamKey === 'home' ? 'Home' : 'Away';
+    var opts = rosterOptionsHTML(teamKey);
+    var size = Math.max(Math.min(getRoster(teamKey).length, 10), 4);
+    var rows = '';
+    for (var i = 0; i < fieldSpecs.length; i += 2) {
+      var pair = fieldSpecs.slice(i, i + 2).map(function (spec) {
+        var id = idPrefix + spec.suffix + cap + 'Multi';
+        return '<div><label for="' + id + '">' + spec.label + '(複数選択可)</label>' +
+          '<select multiple id="' + id + '" class="mono" size="' + size + '">' + opts + '</select></div>';
+      }).join('');
+      rows += '<div class="two-col"' + (i > 0 ? ' style="margin-top:10px;"' : '') + '>' + pair + '</div>';
+    }
+    return '<p class="section-sub" style="margin-top:10px;">' + teamLabel + 'の交代</p>' + rows;
+  }
+
   function rosterPickerHTML(baseCls, rel, specialValue, teamSegId, fixedTeam) {
     return '<span class="roster-picker">' +
       '<input type="hidden" class="mono roster-select ' + baseCls + '-select" id="' + baseCls + '-select" data-roster-rel="' + rel + '"' +
@@ -1290,6 +1316,10 @@ textarea { resize: vertical; min-height: 56px; }
   function fmtPlayer(v) {
     if (!v) return '';
     return SPECIAL_PLAYER_VALUES.indexOf(v) !== -1 ? v : '#' + v;
+  }
+  function fmtPlayerWithTeam(teamName, v) {
+    if (!v) return '';
+    return SPECIAL_PLAYER_VALUES.indexOf(v) !== -1 ? v : teamName + fmtPlayer(v);
   }
 
   function getRosterVal(panel, baseCls) {
@@ -1761,26 +1791,17 @@ textarea { resize: vertical; min-height: 56px; }
         teamOrBothSegHTML('modSubTeamSeg') +
         '<div id="modSubTeamsContainer"></div>';
       var subTeamsContainer = document.getElementById('modSubTeamsContainer');
-      function subTeamBlockHTML(teamKey, teamLabel) {
-        var cap = teamKey === 'home' ? 'Home' : 'Away';
-        var roster = getRoster(teamKey);
-        var opts = roster.map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
-        var size = Math.max(Math.min(roster.length, 10), 4);
-        return '<p class="section-sub" style="margin-top:10px;">' + teamLabel + 'の交代</p>' +
-          '<div class="two-col">' +
-          '<div><label for="modSubBeforeIn' + cap + 'Multi">修正前 IN選手(複数選択可)</label><select multiple id="modSubBeforeIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-          '<div><label for="modSubBeforeOut' + cap + 'Multi">修正前 OUT選手(複数選択可)</label><select multiple id="modSubBeforeOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-          '</div>' +
-          '<div class="two-col" style="margin-top:10px;">' +
-          '<div><label for="modSubAfterIn' + cap + 'Multi">修正後 IN選手(複数選択可)</label><select multiple id="modSubAfterIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-          '<div><label for="modSubAfterOut' + cap + 'Multi">修正後 OUT選手(複数選択可)</label><select multiple id="modSubAfterOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-          '</div>';
-      }
+      var modSubFieldSpecs = [
+        { suffix: 'BeforeIn', label: '修正前 IN選手' },
+        { suffix: 'BeforeOut', label: '修正前 OUT選手' },
+        { suffix: 'AfterIn', label: '修正後 IN選手' },
+        { suffix: 'AfterOut', label: '修正後 OUT選手' }
+      ];
       function renderSubTeams() {
         var v = getSegValue('modSubTeamSeg') || 'home';
         var html = '';
-        if (v === 'home' || v === 'both') html += subTeamBlockHTML('home', currentHomeName());
-        if (v === 'away' || v === 'both') html += subTeamBlockHTML('away', currentAwayName());
+        if (v === 'home' || v === 'both') html += substitutionTeamBlockHTML('home', currentHomeName(), 'modSub', modSubFieldSpecs);
+        if (v === 'away' || v === 'both') html += substitutionTeamBlockHTML('away', currentAwayName(), 'modSub', modSubFieldSpecs);
         subTeamsContainer.innerHTML = html;
       }
       setupSeg('modSubTeamSeg', renderSubTeams);
@@ -1884,22 +1905,15 @@ textarea { resize: vertical; min-height: 56px; }
       teamOrBothSegHTML('panelASubTeamSeg') +
       '<div id="panelASubTeamsContainer"></div>';
     var subTeamsContainer = document.getElementById('panelASubTeamsContainer');
-    function subTeamBlockHTML(teamKey, teamLabel) {
-      var cap = teamKey === 'home' ? 'Home' : 'Away';
-      var roster = getRoster(teamKey);
-      var opts = roster.map(function (num) { return '<option value="' + num + '">#' + num + '</option>'; }).join('');
-      var size = Math.max(Math.min(roster.length, 10), 4);
-      return '<p class="section-sub" style="margin-top:10px;">' + teamLabel + 'の交代</p>' +
-        '<div class="two-col">' +
-        '<div><label for="panelASubIn' + cap + 'Multi">IN選手(複数選択可)</label><select multiple id="panelASubIn' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-        '<div><label for="panelASubOut' + cap + 'Multi">OUT選手(複数選択可)</label><select multiple id="panelASubOut' + cap + 'Multi" class="mono" size="' + size + '">' + opts + '</select></div>' +
-        '</div>';
-    }
+    var panelASubFieldSpecs = [
+      { suffix: 'In', label: 'IN選手' },
+      { suffix: 'Out', label: 'OUT選手' }
+    ];
     function renderSubTeams() {
       var v = getSegValue('panelASubTeamSeg') || 'home';
       var html = '';
-      if (v === 'home' || v === 'both') html += subTeamBlockHTML('home', currentHomeName());
-      if (v === 'away' || v === 'both') html += subTeamBlockHTML('away', currentAwayName());
+      if (v === 'home' || v === 'both') html += substitutionTeamBlockHTML('home', currentHomeName(), 'panelASub', panelASubFieldSpecs);
+      if (v === 'away' || v === 'both') html += substitutionTeamBlockHTML('away', currentAwayName(), 'panelASub', panelASubFieldSpecs);
       subTeamsContainer.innerHTML = html;
     }
     setupSeg('panelASubTeamSeg', renderSubTeams);
@@ -2086,10 +2100,10 @@ textarea { resize: vertical; min-height: 56px; }
             var rbBeforeTeam = getSegValue('modBlockReboundBeforeTeamSeg') || 'home';
             var rbBeforeTeamName = rbBeforeTeam === 'home' ? currentHomeName() : currentAwayName();
             var rbBeforePlayer = getRosterVal(modFieldsContainer, 'modBlockReboundBeforePlayer');
-            var rbBeforeText = rbBeforePlayer ? (rbBeforePlayer === 'チームリバウンド' ? rbBeforePlayer : rbBeforeTeamName + fmtPlayer(rbBeforePlayer)) : '指定なし';
+            var rbBeforeText = rbBeforePlayer ? fmtPlayerWithTeam(rbBeforeTeamName, rbBeforePlayer) : '指定なし';
             var rbAfterTeam = getSegValue('modBlockReboundAfterTeamSeg') || 'home';
             var rbAfterTeamName = rbAfterTeam === 'home' ? currentHomeName() : currentAwayName();
-            var rbAfterText = brAfterPlayer === 'チームリバウンド' ? brAfterPlayer : rbAfterTeamName + fmtPlayer(brAfterPlayer);
+            var rbAfterText = fmtPlayerWithTeam(rbAfterTeamName, brAfterPlayer);
             var rbClockMinEl = document.getElementById('modBlockReboundClockMin');
             var rbClockSecEl = document.getElementById('modBlockReboundClockSec');
             var rbClock = (rbClockMinEl && rbClockSecEl) ? (rbClockMinEl.value + ':' + rbClockSecEl.value) : clock;
@@ -2100,7 +2114,7 @@ textarea { resize: vertical; min-height: 56px; }
         var beforeOppTeamName = team === 'home' ? currentAwayName() : currentHomeName();
         var beforeTypeText = buildTurnoverText('modBefore');
         var beforeStealVal = getRosterVal(modPanelWrap, 'modBeforeStealPlayer');
-        var beforeStealText = beforeStealVal ? (beforeStealVal === 'スティールなし' ? beforeStealVal : beforeOppTeamName + fmtPlayer(beforeStealVal)) : '';
+        var beforeStealText = fmtPlayerWithTeam(beforeOppTeamName, beforeStealVal);
         var beforeExtra = beforeTypeText + (beforeStealText ? '・スティール: ' + beforeStealText : '');
 
         var afterTeam2 = getSegValue('modTurnoverAfterTeamSeg') || team;
@@ -2109,7 +2123,7 @@ textarea { resize: vertical; min-height: 56px; }
         var afterTurnoverVal = getRosterVal(modFieldsContainer, 'modAfterTurnoverPlayer');
         var afterTypeText = buildTurnoverText('modAfter');
         var afterStealVal = getRosterVal(modFieldsContainer, 'modAfterStealPlayer');
-        var afterStealText = afterStealVal ? (afterStealVal === 'スティールなし' ? afterStealVal : afterOppTeamName + fmtPlayer(afterStealVal)) : '';
+        var afterStealText = fmtPlayerWithTeam(afterOppTeamName, afterStealVal);
         var afterExtra = afterTypeText + (afterStealText ? '・スティール: ' + afterStealText : '');
 
         lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　のターンオーバー');
@@ -2128,8 +2142,8 @@ textarea { resize: vertical; min-height: 56px; }
         var afterFoulType = val('modAfterFoulType');
         var beforeFoulOppVal = getRosterVal(modPanelWrap, 'modBeforeFoulOpponent');
         var afterFoulOppVal = getRosterVal(modFieldsContainer, 'modAfterFoulOpponent');
-        var beforeFoulOppText = beforeFoulOppVal ? (beforeFoulOppVal === '相手なし' ? beforeFoulOppVal : foulOppTeamName + fmtPlayer(beforeFoulOppVal)) : '';
-        var afterFoulOppText = afterFoulOppVal ? (afterFoulOppVal === '相手なし' ? afterFoulOppVal : afterFoulOppTeamName + fmtPlayer(afterFoulOppVal)) : '';
+        var beforeFoulOppText = fmtPlayerWithTeam(foulOppTeamName, beforeFoulOppVal);
+        var afterFoulOppText = fmtPlayerWithTeam(afterFoulOppTeamName, afterFoulOppVal);
 
         lines.push('【' + correctionLabel + '】' + period + ' ' + clock + '　のファウル');
         if (afterFoulTeamName !== teamName) {
@@ -2222,8 +2236,8 @@ textarea { resize: vertical; min-height: 56px; }
         }
         var mBeforeAssistRaw = getRosterVal(modFieldsContainer, 'modMultiBeforeAssist');
         var mAfterAssistRaw = getRosterVal(modFieldsContainer, 'modMultiAfterAssist');
-        var mBeforeAssistText = mBeforeAssistRaw ? (mBeforeAssistRaw === 'アシストなし' ? mBeforeAssistRaw : fmtPlayer(mBeforeAssistRaw)) : '';
-        var mAfterAssistText = mAfterAssistRaw ? (mAfterAssistRaw === 'アシストなし' ? mAfterAssistRaw : fmtPlayer(mAfterAssistRaw)) : '';
+        var mBeforeAssistText = fmtPlayer(mBeforeAssistRaw);
+        var mAfterAssistText = fmtPlayer(mAfterAssistRaw);
         if (mAfterAssistText && mAfterAssistText !== mBeforeAssistText) {
           lines.push('アシスト: ' + (mBeforeAssistText || '指定なし') + ' → ' + mAfterAssistText);
         }
