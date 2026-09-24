@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:16</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:26</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2841,9 +2841,46 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (category === 'turnover') {
       var stealJersey = findCompanionJersey(lines, actionIdx, 'スティール');
       if (stealJersey) detail.steal = stealJersey;
+    } else if (category === 'substitution') {
+      detail.subMoves = collectSubstitutionMoves(lines);
     }
 
     return { jersey: jersey, team: team, clock: clock, category: category, detail: detail };
+  }
+
+  function collectSubstitutionMoves(lines) {
+    var homeRoster = rosterData.home || [];
+    var awayRoster = rosterData.away || [];
+    var moves = { home: { in: [], out: [] }, away: { in: [], out: [] } };
+    for (var i = 0; i < lines.length; i++) {
+      var m = /^#(\d+)\s+\S+\s+(プレイヤーイン|プレイヤーアウト)$/.exec(lines[i]);
+      if (!m) continue;
+      var jersey = m[1];
+      var team = null;
+      if (homeRoster.indexOf(jersey) !== -1) team = 'home';
+      else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
+      if (!team) team = findNearbyTeamName(lines, i);
+      if (!team || team === 'official') continue;
+      var bucket = moves[team][m[2] === 'プレイヤーイン' ? 'in' : 'out'];
+      if (bucket.indexOf(jersey) === -1) bucket.push(jersey);
+    }
+    return moves;
+  }
+
+  function selectMultiOptions(selectId, values) {
+    var sel = document.getElementById(selectId);
+    if (!sel || !values || !values.length) return;
+    Array.prototype.forEach.call(sel.options, function (o) {
+      if (values.indexOf(o.value) !== -1) o.selected = true;
+    });
+  }
+
+  function subTeamSegValueFor(moves) {
+    var hasHome = moves.home.in.length > 0 || moves.home.out.length > 0;
+    var hasAway = moves.away.in.length > 0 || moves.away.out.length > 0;
+    if (hasHome && hasAway) return 'both';
+    if (hasAway) return 'away';
+    return 'home';
   }
 
   function applyParsedPlay(parsed) {
@@ -2868,7 +2905,7 @@ textarea { resize: vertical; min-height: 56px; }
       if (!modAfterClockOpen) syncAfterClockDefault();
     }
 
-    if (parsed.jersey && parsed.team && parsed.category !== 'timeout' && parsed.category !== 'assist') {
+    if (parsed.jersey && parsed.team && parsed.category !== 'timeout' && parsed.category !== 'assist' && parsed.category !== 'substitution') {
       clickRosterPick('modPlayer', parsed.jersey);
     }
 
@@ -2928,6 +2965,17 @@ textarea { resize: vertical; min-height: 56px; }
       // mirror before -> after, so only fields the user actually edits show up as a change
       if (parsed.team) clickSegButton('modAfterPlayerTeamSeg', parsed.team);
       if (parsed.jersey) clickRosterPick('modAfterPlayer', parsed.jersey);
+    } else if (parsed.category === 'substitution' && parsed.detail.subMoves) {
+      var moves = parsed.detail.subMoves;
+      clickSegButton('modSubTeamSeg', subTeamSegValueFor(moves));
+      ['home', 'away'].forEach(function (teamKey) {
+        var cap = teamKey === 'home' ? 'Home' : 'Away';
+        // mirror before -> after, so only fields the user actually edits show up as a change
+        selectMultiOptions('modSubBeforeIn' + cap + 'Multi', moves[teamKey].in);
+        selectMultiOptions('modSubAfterIn' + cap + 'Multi', moves[teamKey].in);
+        selectMultiOptions('modSubBeforeOut' + cap + 'Multi', moves[teamKey].out);
+        selectMultiOptions('modSubAfterOut' + cap + 'Multi', moves[teamKey].out);
+      });
     }
   }
 
@@ -2951,7 +2999,7 @@ textarea { resize: vertical; min-height: 56px; }
       if (parsed.team) clickSegButton('f-timeoutTeamSeg', parsed.team);
     } else {
       if (parsed.team) clickSegButton('panelATeamSeg', parsed.team);
-      if (parsed.jersey && parsed.team) clickRosterPick('panelAPlayer', parsed.jersey);
+      if (parsed.jersey && parsed.team && playType !== 'substitution') clickRosterPick('panelAPlayer', parsed.jersey);
     }
 
     if (playType === 'score') {
@@ -2973,6 +3021,16 @@ textarea { resize: vertical; min-height: 56px; }
       var toSel = document.getElementById('f-turnoverType');
       if (toSel) toSel.value = parsed.detail.turnoverType;
       if (parsed.detail.steal) clickRosterPick('f-turnoverSteal', parsed.detail.steal);
+    } else if (playType === 'substitution' && parsed.detail.subMoves) {
+      if (getSegValue('seg-correction') !== '削除') {
+        var moves = parsed.detail.subMoves;
+        clickSegButton('panelASubTeamSeg', subTeamSegValueFor(moves));
+        ['home', 'away'].forEach(function (teamKey) {
+          var cap = teamKey === 'home' ? 'Home' : 'Away';
+          selectMultiOptions('panelASubIn' + cap + 'Multi', moves[teamKey].in);
+          selectMultiOptions('panelASubOut' + cap + 'Multi', moves[teamKey].out);
+        });
+      }
     } else if (playType === 'other') {
       var noteEl = document.getElementById('f-otherNote');
       if (noteEl) noteEl.value = CATEGORY_LABELS[parsed.category] || parsed.category;
