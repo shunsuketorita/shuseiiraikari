@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-24 23:28</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-24 23:46</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2687,12 +2687,12 @@ textarea { resize: vertical; min-height: 56px; }
   }
 
   function hasGenuineTurnoverKeyword(desc) {
-    var idx = desc.indexOf('ターンオーバー');
-    while (idx !== -1) {
-      if (desc.substring(Math.max(0, idx - 5), idx) !== 'オフェンス') return true;
-      idx = desc.indexOf('ターンオーバー', idx + 1);
-    }
-    return false;
+    if (desc.indexOf('ターンオーバー') === -1) return false;
+    // A made/attempted shot can be annotated "ポインツオフターンオーバー" (points off a
+    // turnover) — that's a note about the shot, not a turnover event itself, so any
+    // shot-shaped line takes priority over the turnover keyword.
+    if (desc.indexOf('シュート') !== -1 || desc.indexOf('バスケットカウント') !== -1 || desc.indexOf('フリースロー') !== -1) return false;
+    return true;
   }
 
   var CATEGORY_LABELS = {
