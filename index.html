@@ -245,6 +245,8 @@ body {
 }
 #modAspectSeg button { flex: none; }
 
+#seg-period button { min-width: 0; padding: 7px 4px; }
+
 .row { margin-bottom: 16px; }
 .row:last-child { margin-bottom: 0; }
 label {
@@ -490,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:38</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:48</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -549,29 +551,30 @@ textarea { resize: vertical; min-height: 56px; }
 
       <div class="panel">
         <p class="section-label">修正の種類</p>
-        <div class="seg" id="seg-correction">
+        <div class="seg small" id="seg-correction">
           <button data-val="修正" class="active" type="button">ログ修正</button>
           <button data-val="挿入" type="button">ログ挿入</button>
           <button data-val="削除" type="button">ログ削除</button>
         </div>
 
-        <div class="row" style="margin-top:18px">
-          <label>ピリオド</label>
-          <div class="seg" id="seg-period">
-            <button data-val="1Q" class="active" type="button">1Q</button>
-            <button data-val="2Q" type="button">2Q</button>
-            <button data-val="3Q" type="button">3Q</button>
-            <button data-val="4Q" type="button">4Q</button>
+        <div class="row two-col" style="margin-top:14px">
+          <div>
+            <label>ピリオド</label>
+            <div class="seg small" id="seg-period">
+              <button data-val="1Q" class="active" type="button">1Q</button>
+              <button data-val="2Q" type="button">2Q</button>
+              <button data-val="3Q" type="button">3Q</button>
+              <button data-val="4Q" type="button">4Q</button>
+            </div>
+            <button class="roster-add-btn" id="addOTBtn" type="button" style="margin-top:8px;">+ OTを追加</button>
           </div>
-          <button class="roster-add-btn" id="addOTBtn" type="button" style="margin-top:8px;">+ OTを追加</button>
-        </div>
-
-        <div class="row">
-          <label>試合クロック(残り時間)</label>
-          <div class="clock-row">
-            <select id="clockMin"></select>
-            <span>:</span>
-            <select id="clockSec"></select>
+          <div>
+            <label>試合クロック(残り時間)</label>
+            <div class="clock-row">
+              <select id="clockMin"></select>
+              <span>:</span>
+              <select id="clockSec"></select>
+            </div>
           </div>
         </div>
       </div>
