@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:07</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:14</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2787,6 +2787,13 @@ textarea { resize: vertical; min-height: 56px; }
       if (m) {
         var c = classifyPlayDesc(lines[i]);
         if (c) { actionIdx = i; jersey = m[1]; desc = lines[i]; classified = c; break; }
+        if (m[2].indexOf('ファウルドローン') !== -1) {
+          // no accompanying foul line found for this player — they're the one fouled
+          // (REC), so leave the fouling player blank and fill the opponent field instead
+          actionIdx = i; jersey = ''; desc = lines[i];
+          classified = { category: 'foul', detail: { foulType: '', foulOn: m[1] } };
+          break;
+        }
         continue;
       }
       if (/^(オフィシャルタイムアウト|タイムアウト)$/.test(lines[i])) {
@@ -2822,6 +2829,12 @@ textarea { resize: vertical; min-height: 56px; }
 
     var category = classified.category;
     var detail = classified.detail;
+
+    if (category === 'foul' && detail.foulOn && !jersey && team) {
+      // the team found above is the fouled (REC) player's team; the foul itself
+      // was committed by the opposing team
+      team = team === 'home' ? 'away' : 'home';
+    }
     if (category === 'foul') {
       var foulOnJersey = findCompanionJersey(lines, actionIdx, 'ファウルドローン');
       if (foulOnJersey) detail.foulOn = foulOnJersey;
@@ -2883,9 +2896,9 @@ textarea { resize: vertical; min-height: 56px; }
         if (afterStyleSel) afterStyleSel.value = parsed.detail.style;
       }
       if (parsed.detail.fastbreak) clickSegButton('modMultiAfterFastbreakSeg', 'ファストブレイクあり');
-    } else if (parsed.category === 'foul' && parsed.detail.foulType) {
+    } else if (parsed.category === 'foul' && (parsed.detail.foulType || parsed.detail.foulOn)) {
       var fSel = document.getElementById('modBeforeFoulType');
-      if (fSel) fSel.value = parsed.detail.foulType;
+      if (fSel && parsed.detail.foulType) fSel.value = parsed.detail.foulType;
       if (parsed.detail.foulOn) {
         clickRosterPick('modBeforeFoulOpponent', parsed.detail.foulOn);
       }
@@ -2896,7 +2909,7 @@ textarea { resize: vertical; min-height: 56px; }
         clickRosterPick('modAfterFoulOpponent', parsed.detail.foulOn);
       }
       var afterFoulSel = document.getElementById('modAfterFoulType');
-      if (afterFoulSel) afterFoulSel.value = parsed.detail.foulType;
+      if (afterFoulSel && parsed.detail.foulType) afterFoulSel.value = parsed.detail.foulType;
     } else if (parsed.category === 'turnover' && parsed.detail.turnoverType) {
       var tSel = document.getElementById('modBeforeTurnoverType');
       if (tSel) tSel.value = parsed.detail.turnoverType;
@@ -2952,9 +2965,9 @@ textarea { resize: vertical; min-height: 56px; }
         var fbBtn = document.querySelector('#panelA .f-scoreFastbreak button[data-val="ファストブレイクあり"]');
         if (fbBtn) fbBtn.click();
       }
-    } else if (playType === 'foul' && parsed.detail.foulType) {
+    } else if (playType === 'foul' && (parsed.detail.foulType || parsed.detail.foulOn)) {
       var foulSel = document.getElementById('f-foulType');
-      if (foulSel) foulSel.value = parsed.detail.foulType;
+      if (foulSel && parsed.detail.foulType) foulSel.value = parsed.detail.foulType;
       if (parsed.detail.foulOn) clickRosterPick('f-foulOn', parsed.detail.foulOn);
     } else if (playType === 'turnover' && parsed.detail.turnoverType) {
       var toSel = document.getElementById('f-turnoverType');
