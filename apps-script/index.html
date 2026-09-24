@@ -490,7 +490,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-24 23:46</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-25 00:00</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2750,6 +2750,21 @@ textarea { resize: vertical; min-height: 56px; }
     return '';
   }
 
+  function findNearbyTeamName(lines, actionIdx) {
+    var home = currentHomeName();
+    var away = currentAwayName();
+    for (var w = 0; w <= 3; w++) {
+      var candidates = w === 0 ? [actionIdx] : [actionIdx - w, actionIdx + w];
+      for (var k = 0; k < candidates.length; k++) {
+        var idx = candidates[k];
+        if (idx < 0 || idx >= lines.length) continue;
+        if (lines[idx] === home) return 'home';
+        if (lines[idx] === away) return 'away';
+      }
+    }
+    return null;
+  }
+
   function parsePlayByPlayText(text) {
     var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
 
@@ -2763,6 +2778,11 @@ textarea { resize: vertical; min-height: 56px; }
       }
       if (/^(オフィシャルタイムアウト|タイムアウト)$/.test(lines[i])) {
         actionIdx = i; jersey = ''; desc = lines[i]; classified = classifyPlayDesc(lines[i]); break;
+      }
+      if (/^チーム(オフェンス|ディフェンス)リバウンド/.test(lines[i])) {
+        actionIdx = i; jersey = 'チームリバウンド'; desc = lines[i];
+        classified = { category: 'rebound', detail: { fastbreak: false } };
+        break;
       }
     }
     if (actionIdx === -1 || !classified) return null;
@@ -2785,6 +2805,7 @@ textarea { resize: vertical; min-height: 56px; }
     if (homeRoster.indexOf(jersey) !== -1) team = 'home';
     else if (awayRoster.indexOf(jersey) !== -1) team = 'away';
     if (desc === 'オフィシャルタイムアウト') team = 'official';
+    if (!team) team = findNearbyTeamName(lines, actionIdx);
 
     var category = classified.category;
     var detail = classified.detail;
@@ -2877,6 +2898,10 @@ textarea { resize: vertical; min-height: 56px; }
       }
       var afterTurnoverSel = document.getElementById('modAfterTurnoverType');
       if (afterTurnoverSel) afterTurnoverSel.value = parsed.detail.turnoverType;
+    } else if (parsed.category === 'rebound' || parsed.category === 'block') {
+      // mirror before -> after, so only fields the user actually edits show up as a change
+      if (parsed.team) clickSegButton('modAfterPlayerTeamSeg', parsed.team);
+      if (parsed.jersey) clickRosterPick('modAfterPlayer', parsed.jersey);
     }
   }
 
@@ -2941,7 +2966,7 @@ textarea { resize: vertical; min-height: 56px; }
     applyParsedPlay(parsed);
     var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
     parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
-    if (parsed.jersey) parts.push('背番号: #' + parsed.jersey);
+    if (parsed.jersey) parts.push('背番号: ' + fmtPlayer(parsed.jersey));
     parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
     resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。修正後の欄にも同じ内容を入れてあるので、間違っている項目だけ変更してください。';
   });
@@ -2963,7 +2988,7 @@ textarea { resize: vertical; min-height: 56px; }
     var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
     var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
     parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
-    if (parsed.jersey) parts.push('背番号: #' + parsed.jersey);
+    if (parsed.jersey) parts.push('背番号: ' + fmtPlayer(parsed.jersey));
     parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
     var note = playType === 'other' ? ' 「その他」欄に自動入力したので、内容を確認・修正してください。' : ' 読み取れなかった項目や間違っている項目は手動で直してください。';
     resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。' + note;
