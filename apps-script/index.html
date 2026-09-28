@@ -448,7 +448,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:34</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:43</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -528,9 +528,9 @@ textarea { resize: vertical; min-height: 56px; }
 
       <div class="panel" id="gameLoadPanel" style="display:none;">
         <p class="section-label" style="margin-bottom:2px;">試合を読み込む</p>
-        <p class="section-sub" style="margin:0 0 10px;">Yahoo!スポーツの試合URLか試合IDを入力すると、プレーを選ぶだけで自動入力できます</p>
+        <p class="section-sub" style="margin:0 0 10px;">Yahoo!スポーツの試合URLか試合IDを入力すると、プレーを選ぶだけで自動入力できます(B.PREMIER / B.ONE / B.NEXT 対応)</p>
         <div class="row">
-          <input type="text" id="gameLoadInput" placeholder="例: https://sports.yahoo.co.jp/basket/bleague/premier/game/506396/text または 506396">
+          <input type="text" id="gameLoadInput" placeholder="例: https://sports.yahoo.co.jp/basket/bleague/one/game/507199/text または 507199">
         </div>
         <div class="row" style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <button class="theme-toggle" id="gameLoadBtn" type="button">読み込む</button>
@@ -3187,7 +3187,8 @@ textarea { resize: vertical; min-height: 56px; }
         .withSuccessHandler(function (result) {
           gameQuartersData = (result && result.quarters) || [];
           var total = gameQuartersData.reduce(function (n, q) { return n + q.plays.length; }, 0);
-          var statusParts = [gameQuartersData.length + 'クォーター・' + total + 'プレーを読み込みました。'];
+          var divisionLabel = (result && result.division) ? '(' + result.division + ')' : '';
+          var statusParts = [divisionLabel + gameQuartersData.length + 'クォーター・' + total + 'プレーを読み込みました。'];
 
           if (result && result.teams) {
             homeNameInput.value = result.teams.home;

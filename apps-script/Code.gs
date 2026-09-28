@@ -52,27 +52,44 @@ function parseGameTeamNames_(html) {
   return names.length === 2 ? { home: names[0], away: names[1] } : null;
 }
 
+var BLEAGUE_DIVISIONS_ = ['premier', 'one', 'next'];
+
+function widgetUrl_(division, gameId, page) {
+  return 'https://sports.yahoo.co.jp/basket/widget/ds/pc/' + division + '/games/' + gameId + '/' + page + '.html';
+}
+
+function resolveDivisionAndFetchText_(input, gameId) {
+  var divM = /\/bleague\/(premier|one|next)\//.exec(String(input || ''));
+  var candidates = divM ? [divM[1]] : BLEAGUE_DIVISIONS_;
+  var lastCode = null;
+  for (var i = 0; i < candidates.length; i++) {
+    var division = candidates[i];
+    var res = UrlFetchApp.fetch(widgetUrl_(division, gameId, 'text_live'), { muteHttpExceptions: true });
+    var code = res.getResponseCode();
+    if (code === 200) {
+      return { division: division, res: res };
+    }
+    lastCode = code;
+  }
+  throw new Error('読み込みに失敗しました(HTTP ' + lastCode + ')。試合IDを確認してください。');
+}
+
 function fetchGameText(input) {
   var m = /(\d{5,7})/.exec(String(input || ''));
   if (!m) {
     throw new Error('試合IDが見つかりませんでした。試合ページのURL、または試合IDを入力してください。');
   }
   var gameId = m[1];
-  var textUrl = 'https://sports.yahoo.co.jp/basket/widget/ds/pc/premier/games/' + gameId + '/text_live.html';
-  var res = UrlFetchApp.fetch(textUrl, { muteHttpExceptions: true });
-  var code = res.getResponseCode();
-  if (code !== 200) {
-    throw new Error('読み込みに失敗しました(HTTP ' + code + ')。試合IDを確認してください。');
-  }
-  var quarters = parseGameWidgetHtml_(res.getContentText());
+  var found = resolveDivisionAndFetchText_(input, gameId);
+  var division = found.division;
+  var quarters = parseGameWidgetHtml_(found.res.getContentText());
   if (!quarters.length) {
     throw new Error('プレーが見つかりませんでした。試合開始前か、ページの形式が変わった可能性があります。');
   }
 
   var teams = null;
   try {
-    var scoreboardUrl = 'https://sports.yahoo.co.jp/basket/widget/ds/pc/premier/games/' + gameId + '/scoreboard.html';
-    var sbRes = UrlFetchApp.fetch(scoreboardUrl, { muteHttpExceptions: true });
+    var sbRes = UrlFetchApp.fetch(widgetUrl_(division, gameId, 'scoreboard'), { muteHttpExceptions: true });
     if (sbRes.getResponseCode() === 200) {
       teams = parseGameTeamNames_(sbRes.getContentText());
     }
@@ -95,9 +112,11 @@ function fetchGameText(input) {
     return Object.keys(obj).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
   };
 
+  var DIVISION_LABELS_ = { premier: 'B.PREMIER', one: 'B.ONE', next: 'B.NEXT' };
   return {
     quarters: quarters,
     teams: teams,
+    division: DIVISION_LABELS_[division] || division,
     homeRoster: toSortedNums(homeNums),
     awayRoster: toSortedNums(awayNums)
   };
