@@ -187,6 +187,8 @@ body {
 }
 #teamRosterBody.collapsed { display: none; }
 .foldable.collapsed { display: none; }
+.panel:has(> #teamRosterBody.collapsed) { padding: 10px 16px; }
+.panel:has(> #teamRosterBody.collapsed) .panel-header-row { margin-bottom: 0; }
 
 .content-panel-wrap { display: none; }
 .content-panel-wrap.show { display: block; }
@@ -449,7 +451,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 02:52</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 03:06</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3163,7 +3165,6 @@ textarea { resize: vertical; min-height: 56px; }
     var gameQuartersData = [];
     var gameLoadStatusEl = document.getElementById('gameLoadStatus');
     var gameLoadResultsEl = document.getElementById('gameLoadResults');
-    var lastSelectedPlayRow = null;
     var openQuarterList = null;
 
     function periodValueForQuarter(qName, qIndex) {
@@ -3231,11 +3232,7 @@ textarea { resize: vertical; min-height: 56px; }
               lines.push(q.plays[k].time, q.plays[k].team, q.plays[k].desc);
             }
             runAutofillFromGameText(lines.join('\n'));
-            if (lastSelectedPlayRow) lastSelectedPlayRow.classList.remove('selected');
             row.classList.add('selected');
-            lastSelectedPlayRow = row;
-            list.style.display = 'none';
-            openQuarterList = null;
             var target = getSegValue('seg-correction') === '修正' ? modPanelWrap : document.getElementById('panelAWrap');
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
