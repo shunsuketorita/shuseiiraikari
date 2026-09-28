@@ -12,7 +12,6 @@ var CORRECTION_SHEET_CONTENT_FIRST_COL_ = 10; // column J (used to detect the ne
 
 var CORRECTION_SHEET_LAST_COL_ = 18; // column R
 var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if J:R is entirely empty
-var CORRECTION_FIXED_WORKER_ = '部田';
 
 function findNextEmptyContentRow_(sheet) {
   var maxRow = sheet.getMaxRows();
@@ -25,7 +24,7 @@ function findNextEmptyContentRow_(sheet) {
   return CORRECTION_SHEET_DEFAULT_START_ROW_;
 }
 
-function appendRowsToSheet(tsvText, startRow, meta) {
+function appendRowsToSheet(tsvText, meta) {
   var lines = String(tsvText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
   if (!lines.length) {
     throw new Error('書き込む内容がありません。');
@@ -33,7 +32,7 @@ function appendRowsToSheet(tsvText, startRow, meta) {
   meta = meta || {};
   var prefix = [
     meta.workDate || '',
-    CORRECTION_FIXED_WORKER_,
+    meta.worker || '',
     meta.gameDate || '',
     meta.home || '',
     meta.away || '',
@@ -56,7 +55,7 @@ function appendRowsToSheet(tsvText, startRow, meta) {
   });
   var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_FIRST_COL_ + 1;
 
-  var targetRow = (startRow && parseInt(startRow, 10) > 0) ? parseInt(startRow, 10) : findNextEmptyContentRow_(sheet);
+  var targetRow = findNextEmptyContentRow_(sheet);
   sheet.getRange(targetRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
   return { count: rows.length, startRow: targetRow };
 }

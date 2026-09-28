@@ -186,6 +186,7 @@ body {
   margin-bottom: 12px;
 }
 #teamRosterBody.collapsed { display: none; }
+.foldable.collapsed { display: none; }
 
 .content-panel-wrap { display: none; }
 .content-panel-wrap.show { display: block; }
@@ -448,8 +449,14 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 02:31</span>
-      <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 02:52</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
+        <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
+          <input type="text" id="headerWorkDateInput" placeholder="作業日" style="width:52px;padding:5px 6px;font-size:12px;">
+          <input type="text" id="headerWorkerInput" placeholder="作業者" style="width:52px;padding:5px 6px;font-size:12px;">
+        </span>
+      </div>
     </div>
   </div>
 
@@ -460,11 +467,11 @@ textarea { resize: vertical; min-height: 56px; }
         <li>「チーム名・背番号」に、ホーム/アウェイのチーム名・チーム記号(1文字)と選手の背番号を登録します(最初に一度だけ)。</li>
         <li>「ログ修正」「ログ挿入」「ログ削除」から、今回やりたいことを選びます。</li>
         <li>(Apps Script版のみ)「試合を読み込む」にYahoo!スポーツの試合URLか試合IDを入力して「読み込む」を押すと、その試合の全プレーが読み込まれます。クォーターを開いて該当プレーを押すだけで自動入力できます。</li>
-        <li>FLSのACTION LOGなどから対象プレーの行をコピーして「FLSのプレイバイプレイを貼り付けて自動入力」欄に貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
+        <li>試合の読み込みを使わない場合は「手動で貼り付ける場合はこちら」を開き、FLSのACTION LOGなどから対象プレーの行をコピーして貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
         <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
         <li>画面下の「スプレッドシート用に生成してコピー」を押すと、タブ区切りの行(Q列〜R列分)が自動で作られてコピーされます。</li>
-        <li>スプレッドシートのQ列(該当行)を選んでそのまま貼り付けます。複数行できた場合は、そのまま連続して貼り付けられます。(Apps Script版のみ)「スプレッドシートに書き込む」を押すと、貼り付け操作なしでそのままシートの一番下に追記されます。</li>
+        <li>スプレッドシートのQ列(該当行)を選んでそのまま貼り付けます。複数行できた場合は、そのまま連続して貼り付けられます。(Apps Script版のみ)「スプレッドシートに書き込む」を押すと、貼り付け操作なしでそのままシートの一番下に追記されます(画面右上の作業日・作業者もあわせて書き込まれます)。</li>
       </ol>
     </div>
   </div>
@@ -572,11 +579,14 @@ textarea { resize: vertical; min-height: 56px; }
       <div class="panel content-panel-wrap" id="panelAWrap">
         <p class="section-label" id="contentLabelA">元の内容(修正前)</p>
         <div class="row">
-          <label for="panelAPasteInput">FLSのプレイバイプレイを貼り付けて自動入力</label>
-          <textarea id="panelAPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
-          <button class="theme-toggle" id="panelAPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
-          <button class="theme-toggle" id="panelAPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
-          <p class="section-sub" id="panelAPasteResult" style="margin-top:6px;"></p>
+          <button class="theme-toggle" id="panelAPasteToggle" type="button">手動で貼り付ける場合はこちら</button>
+          <div class="foldable collapsed" id="panelAPasteBody" style="margin-top:10px;">
+            <label for="panelAPasteInput">FLSのプレイバイプレイを貼り付けて自動入力</label>
+            <textarea id="panelAPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
+            <button class="theme-toggle" id="panelAPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
+            <button class="theme-toggle" id="panelAPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
+            <p class="section-sub" id="panelAPasteResult" style="margin-top:6px;"></p>
+          </div>
         </div>
         <div class="content-panel" id="panelA">
           <div class="row">
@@ -764,11 +774,14 @@ textarea { resize: vertical; min-height: 56px; }
       <div class="panel content-panel-wrap show" id="modPanelWrap">
         <p class="section-label">訂正内容</p>
         <div class="row">
-          <label for="modPasteInput">FLSのプレイバイプレイを貼り付けて自動入力(元の内容用)</label>
-          <textarea id="modPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
-          <button class="theme-toggle" id="modPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
-          <button class="theme-toggle" id="modPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
-          <p class="section-sub" id="modPasteResult" style="margin-top:6px;"></p>
+          <button class="theme-toggle" id="modPasteToggle" type="button">手動で貼り付ける場合はこちら</button>
+          <div class="foldable collapsed" id="modPasteBody" style="margin-top:10px;">
+            <label for="modPasteInput">FLSのプレイバイプレイを貼り付けて自動入力(元の内容用)</label>
+            <textarea id="modPasteInput" placeholder="FLSのACTION LOGなどからコピーした、対象プレーを含む部分をそのまま貼り付け" rows="3"></textarea>
+            <button class="theme-toggle" id="modPasteBtn" type="button" style="margin-top:8px;">貼り付けた内容から自動入力</button>
+            <button class="theme-toggle" id="modPasteClearBtn" type="button" style="margin-top:8px;margin-left:6px;">削除</button>
+            <p class="section-sub" id="modPasteResult" style="margin-top:6px;"></p>
+          </div>
         </div>
         <div class="row">
           <label for="modCategory">プレーの種類</label>
@@ -890,14 +903,6 @@ textarea { resize: vertical; min-height: 56px; }
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <button class="copy-btn" id="copyBtn" type="button">コピー</button>
             <button class="copy-btn" id="sheetWriteBtn" type="button" style="display:none;">スプレッドシートに書き込む</button>
-            <span id="sheetWriteRowWrap" style="display:none;align-items:center;gap:6px;">
-              <label for="sheetWriteRowInput" style="margin:0;font-size:12px;color:var(--text-faint);">開始行</label>
-              <input type="number" id="sheetWriteRowInput" min="1" placeholder="自動" style="width:70px;padding:6px 8px;">
-            </span>
-            <span id="sheetWriteDateWrap" style="display:none;align-items:center;gap:6px;">
-              <label for="sheetWriteDateInput" style="margin:0;font-size:12px;color:var(--text-faint);">作業日</label>
-              <input type="text" id="sheetWriteDateInput" placeholder="例: 9/27" style="width:70px;padding:6px 8px;">
-            </span>
             <span id="sheetWriteStatus" style="font-size:12.5px;color:var(--text-faint);"></span>
           </div>
         </div>
@@ -2535,24 +2540,23 @@ textarea { resize: vertical; min-height: 56px; }
 
   var sheetWriteBtn = document.getElementById('sheetWriteBtn');
   var sheetWriteStatus = document.getElementById('sheetWriteStatus');
-  var sheetWriteRowWrap = document.getElementById('sheetWriteRowWrap');
-  var sheetWriteRowInput = document.getElementById('sheetWriteRowInput');
-  var sheetWriteDateWrap = document.getElementById('sheetWriteDateWrap');
-  var sheetWriteDateInput = document.getElementById('sheetWriteDateInput');
+  var headerMetaWrap = document.getElementById('headerMetaWrap');
+  var headerWorkDateInput = document.getElementById('headerWorkDateInput');
+  var headerWorkerInput = document.getElementById('headerWorkerInput');
   var lastLoadedGameDate = '';
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     sheetWriteBtn.style.display = '';
-    sheetWriteRowWrap.style.display = 'inline-flex';
-    sheetWriteDateWrap.style.display = 'inline-flex';
+    headerMetaWrap.style.display = 'inline-flex';
     var todayDate = new Date();
-    sheetWriteDateInput.value = (todayDate.getMonth() + 1) + '/' + todayDate.getDate();
+    headerWorkDateInput.value = (todayDate.getMonth() + 1) + '/' + todayDate.getDate();
+    headerWorkerInput.value = '部田';
     sheetWriteBtn.addEventListener('click', function () {
       if (!currentText) return;
       sheetWriteBtn.disabled = true;
       sheetWriteStatus.textContent = '書き込み中…';
-      var rowVal = sheetWriteRowInput.value ? parseInt(sheetWriteRowInput.value, 10) : null;
       var meta = {
-        workDate: sheetWriteDateInput.value.trim(),
+        workDate: headerWorkDateInput.value.trim(),
+        worker: headerWorkerInput.value.trim(),
         gameDate: lastLoadedGameDate,
         home: currentHomeName(),
         away: currentAwayName()
@@ -2566,7 +2570,7 @@ textarea { resize: vertical; min-height: 56px; }
           sheetWriteBtn.disabled = false;
           sheetWriteStatus.textContent = (err && err.message) || '書き込みに失敗しました。';
         })
-        .appendRowsToSheet(currentText, rowVal, meta);
+        .appendRowsToSheet(currentText, meta);
     });
   }
 
@@ -3096,6 +3100,17 @@ textarea { resize: vertical; min-height: 56px; }
     return true;
   }
 
+  function wirePasteToggle(toggleId, bodyId) {
+    var toggle = document.getElementById(toggleId);
+    var body = document.getElementById(bodyId);
+    toggle.addEventListener('click', function () {
+      var collapsed = body.classList.toggle('collapsed');
+      toggle.textContent = collapsed ? '手動で貼り付ける場合はこちら' : '閉じる';
+    });
+  }
+  wirePasteToggle('modPasteToggle', 'modPasteBody');
+  wirePasteToggle('panelAPasteToggle', 'panelAPasteBody');
+
   document.getElementById('modPasteBtn').addEventListener('click', function () {
     runModPaste(document.getElementById('modPasteInput').value);
   });
@@ -3269,6 +3284,9 @@ textarea { resize: vertical; min-height: 56px; }
           if ((result && result.homeRoster && result.homeRoster.length) || (result && result.awayRoster && result.awayRoster.length)) {
             refreshAllRosterSelects();
             statusParts.push('背番号: ホーム' + (result.homeRoster || []).length + '人・アウェイ' + (result.awayRoster || []).length + '人');
+          }
+          if (result && result.teams) {
+            setTeamRosterCollapsed(true);
           }
 
           gameLoadStatusEl.textContent = statusParts.join(' / ');
