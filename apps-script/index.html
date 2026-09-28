@@ -492,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-27 16:58</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-28 12:54</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -2161,9 +2161,19 @@ textarea { resize: vertical; min-height: 56px; }
 
         if (modCategorySel.value === 'rebound') {
           var afterTeam = getSegValue('modAfterPlayerTeamSeg') || team;
-          pushRow(period, clock, 'REB選手', sheetPlayer(team, player), sheetPlayer(afterTeam, afterVal));
+          var effAfterVal = afterVal || player;
+          var rebBeforeText = sheetPlayer(team, player);
+          var rebAfterText = sheetPlayer(afterTeam, effAfterVal);
+          if (rebBeforeText !== rebAfterText) pushRow(period, clock, 'REB選手', rebBeforeText, rebAfterText);
+          if (clockChanged) {
+            var rebClockLabel = sheetPlayer(afterTeam, effAfterVal) + ' REB';
+            pushRow(period, clock, 'クロック', rebClockLabel + ' ' + sheetClock(clock), rebClockLabel + ' ' + sheetClock(afterClock));
+          }
         } else if (modCategorySel.value === 'block') {
-          pushRow(period, clock, 'BLK有無', sheetPlayer(team, player), sheetPlayer(team, afterVal));
+          var effBlkAfterVal = afterVal || player;
+          var blkBeforeText = sheetPlayer(team, player);
+          var blkAfterText = sheetPlayer(team, effBlkAfterVal);
+          if (blkBeforeText !== blkAfterText) pushRow(period, clock, 'BLK有無', blkBeforeText, blkAfterText);
           var brAfterPlayer = getRosterVal(modFieldsContainer, 'modBlockReboundAfterPlayer');
           if (brAfterPlayer) {
             var rbBeforeTeam = getSegValue('modBlockReboundBeforeTeamSeg') || 'home';
@@ -2174,16 +2184,29 @@ textarea { resize: vertical; min-height: 56px; }
             var rbClockMinEl = document.getElementById('modBlockReboundClockMin');
             var rbClockSecEl = document.getElementById('modBlockReboundClockSec');
             var rbClock = (rbClockMinEl && rbClockSecEl) ? (rbClockMinEl.value + ':' + rbClockSecEl.value) : clock;
-            pushRow(period, rbClock, 'REB選手', rbBeforeText, rbAfterText);
+            if (rbBeforeText !== rbAfterText) pushRow(period, rbClock, 'REB選手', rbBeforeText, rbAfterText);
+          }
+          if (clockChanged) {
+            var blkClockLabel = sheetPlayer(team, effBlkAfterVal) + ' BLK';
+            pushRow(period, clock, 'クロック', blkClockLabel + ' ' + sheetClock(clock), blkClockLabel + ' ' + sheetClock(afterClock));
           }
         } else {
-          pushRow(period, clock, 'シュート選手', sheetPlayer(team, player), sheetPlayer(team, afterVal));
+          var effScoreAfterVal = afterVal || player;
+          var scoreBeforeText = sheetPlayer(team, player);
+          var scoreAfterText = sheetPlayer(team, effScoreAfterVal);
+          if (scoreBeforeText !== scoreAfterText) pushRow(period, clock, 'シュート選手', scoreBeforeText, scoreAfterText);
+          if (clockChanged) {
+            var scoreClockLabel = sheetPlayer(team, effScoreAfterVal) + ' シュート';
+            pushRow(period, clock, 'クロック', scoreClockLabel + ' ' + sheetClock(clock), scoreClockLabel + ' ' + sheetClock(afterClock));
+          }
         }
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
       } else if (def.field === 'turnoverFull') {
         var afterTeam2 = getSegValue('modTurnoverAfterTeamSeg') || team;
         var afterTurnoverVal = getRosterVal(modFieldsContainer, 'modAfterTurnoverPlayer');
-        pushRow(period, clock, 'TO選手', sheetPlayer(team, player), sheetPlayer(afterTeam2, afterTurnoverVal));
+        var effAfterTurnoverVal = afterTurnoverVal || player;
+        var toBeforeText = sheetPlayer(team, player);
+        var toAfterText = sheetPlayer(afterTeam2, effAfterTurnoverVal);
+        if (toBeforeText !== toAfterText) pushRow(period, clock, 'TO選手', toBeforeText, toAfterText);
 
         var beforeTypeRaw = val('modBeforeTurnoverType');
         var afterTypeRaw = val('modAfterTurnoverType');
@@ -2200,7 +2223,10 @@ textarea { resize: vertical; min-height: 56px; }
         if (afterStealText !== beforeStealText) {
           pushRow(period, clock, 'ST選手', beforeStealText, afterStealText);
         }
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        if (clockChanged) {
+          var toClockLabel = sheetPlayer(afterTeam2, effAfterTurnoverVal) + ' TO';
+          pushRow(period, clock, 'クロック', toClockLabel + ' ' + sheetClock(clock), toClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'foulFull') {
         var afterFoulTeam = getSegValue('modFoulAfterTeamSeg') || team;
         var afterFoulPlayerVal = getRosterVal(modFieldsContainer, 'modAfterFoulPlayer');
@@ -2213,7 +2239,6 @@ textarea { resize: vertical; min-height: 56px; }
         var beforeRecText = beforeFoulOppVal && beforeFoulOppVal !== '相手なし' ? sheetPlayer(beforeOppTeamKey, beforeFoulOppVal) : 'なし';
         var afterRecText = afterFoulOppVal && afterFoulOppVal !== '相手なし' ? sheetPlayer(afterOppTeamKey, afterFoulOppVal) : 'なし';
 
-        var foulRowsBefore = rows.length;
         if (afterFoulPlayerVal && (afterFoulPlayerVal !== player || afterFoulTeam !== team)) {
           pushRow(period, clock, 'ファウル選手', sheetPlayer(team, player), sheetPlayer(afterFoulTeam, afterFoulPlayerVal));
         }
@@ -2223,10 +2248,10 @@ textarea { resize: vertical; min-height: 56px; }
         if (afterRecText !== beforeRecText) {
           pushRow(period, clock, 'REC選手', beforeRecText, afterRecText);
         }
-        if (rows.length === foulRowsBefore) {
-          pushRow(period, clock, 'ファウル選手', sheetPlayer(team, player), sheetPlayer(afterFoulTeam, afterFoulPlayerVal || player));
+        if (clockChanged) {
+          var foulClockLabel = sheetPlayer(afterFoulTeam, afterFoulPlayerVal || player) + ' ファウル';
+          pushRow(period, clock, 'クロック', foulClockLabel + ' ' + sheetClock(clock), foulClockLabel + ' ' + sheetClock(afterClock));
         }
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
       } else if (def.field === 'subInOutFull') {
         var subTeam = getSegValue('modSubTeamSeg') || 'home';
         var readMulti = function (id) {
@@ -2311,12 +2336,17 @@ textarea { resize: vertical; min-height: 56px; }
           beforeParts.push(mBeforeAssistRaw && mBeforeAssistRaw !== 'アシストなし' ? 'AS ' + sheetPlayer(team, mBeforeAssistRaw) : 'なし');
           afterParts.push(mAfterAssistRaw !== 'アシストなし' ? 'AS ' + sheetPlayer(team, mAfterAssistRaw) : 'なし');
         }
+        if (tags.length && tags.indexOf('シュート選手') === -1) {
+          beforeParts.unshift(sheetPlayer(team, mBeforePlayerRaw || player));
+          afterParts.unshift(sheetPlayer(team, mAfterPlayerRaw || player));
+        }
         if (tags.length) {
           pushRow(period, clock, tags.join('、'), beforeParts.join(' '), afterParts.join(' '));
-        } else {
-          pushRow(period, clock, 'シュート種類', sheetPlayer(team, mBeforePlayerRaw || player), sheetPlayer(team, mAfterPlayerRaw || player));
         }
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        if (clockChanged) {
+          var multiClockLabel = sheetPlayer(team, mAfterPlayerRaw || mBeforePlayerRaw || player) + ' シュート';
+          pushRow(period, clock, 'クロック', multiClockLabel + ' ' + sheetClock(clock), multiClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'secondaryPlayer') {
         var secBeforeVal = getRosterVal(modFieldsContainer, 'modBeforePlayer');
         var secAfterVal = getRosterVal(modFieldsContainer, 'modAfterPlayer');
@@ -2325,35 +2355,56 @@ textarea { resize: vertical; min-height: 56px; }
         var secKind = (secBeforeSpecial || secAfterSpecial) ? 'AS有無' : 'AS選手';
         var secBeforeText = secBeforeSpecial ? 'ASなし' : 'AS ' + sheetPlayer(team, secBeforeVal);
         var secAfterText = secAfterSpecial ? 'ASなし' : 'AS ' + sheetPlayer(team, secAfterVal);
-        pushRow(period, clock, secKind, secBeforeText, secAfterText);
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        if (secBeforeText !== secAfterText) pushRow(period, clock, secKind, secBeforeText, secAfterText);
+        if (clockChanged) {
+          var asClockLabel = sheetPlayer(team, player) + ' シュート';
+          pushRow(period, clock, 'クロック', asClockLabel + ' ' + sheetClock(clock), asClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'scorePosition') {
-        pushRow(period, clock, 'シュート位置', val('modBeforeScorePosition'), val('modAfterScorePosition'));
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        var posBeforeText = sheetPlayer(team, player) + ' ' + val('modBeforeScorePosition');
+        var posAfterText = sheetPlayer(team, player) + ' ' + val('modAfterScorePosition');
+        if (posBeforeText !== posAfterText) pushRow(period, clock, 'シュート位置', posBeforeText, posAfterText);
+        if (clockChanged) {
+          var posClockLabel = sheetPlayer(team, player) + ' シュート';
+          pushRow(period, clock, 'クロック', posClockLabel + ' ' + sheetClock(clock), posClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'scoreResult') {
-        pushRow(period, clock, 'シュート結果', val('modBeforeScoreResultOnly'), val('modAfterScoreResultOnly'));
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        var resBeforeText = sheetPlayer(team, player) + ' ' + val('modBeforeScoreResultOnly');
+        var resAfterText = sheetPlayer(team, player) + ' ' + val('modAfterScoreResultOnly');
+        if (resBeforeText !== resAfterText) pushRow(period, clock, 'シュート結果', resBeforeText, resAfterText);
+        if (clockChanged) {
+          var resClockLabel = sheetPlayer(team, player) + ' シュート';
+          pushRow(period, clock, 'クロック', resClockLabel + ' ' + sheetClock(clock), resClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'shotStyleOnly') {
-        pushRow(period, clock, 'シュート種類',
-          sheetPlayer(team, player) + ' ' + shotStyleEn(val('modBeforeShotStyleOnly')),
-          sheetPlayer(team, player) + ' ' + shotStyleEn(val('modAfterShotStyleOnly')));
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        var styleBeforeText = sheetPlayer(team, player) + ' ' + shotStyleEn(val('modBeforeShotStyleOnly'));
+        var styleAfterText = sheetPlayer(team, player) + ' ' + shotStyleEn(val('modAfterShotStyleOnly'));
+        if (styleBeforeText !== styleAfterText) pushRow(period, clock, 'シュート種類', styleBeforeText, styleAfterText);
+        if (clockChanged) {
+          var styleClockLabel = sheetPlayer(team, player) + ' シュート';
+          pushRow(period, clock, 'クロック', styleClockLabel + ' ' + sheetClock(clock), styleClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'fastbreakOnly') {
-        pushRow(period, clock, 'FB有無',
-          val('modBeforeFastbreakOnly') === 'ファストブレイクあり' ? 'FB有り' : 'FB無し',
-          val('modAfterFastbreakOnly') === 'ファストブレイクあり' ? 'FB有り' : 'FB無し');
-        if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
+        var fbBeforeText = val('modBeforeFastbreakOnly') === 'ファストブレイクあり' ? 'FB有り' : 'FB無し';
+        var fbAfterText = val('modAfterFastbreakOnly') === 'ファストブレイクあり' ? 'FB有り' : 'FB無し';
+        if (fbBeforeText !== fbAfterText) pushRow(period, clock, 'FB有無', fbBeforeText, fbAfterText);
+        if (clockChanged) {
+          var fbClockLabel = sheetPlayer(team, player) + ' シュート';
+          pushRow(period, clock, 'クロック', fbClockLabel + ' ' + sheetClock(clock), fbClockLabel + ' ' + sheetClock(afterClock));
+        }
       } else if (def.field === 'freeText') {
         if (modCategorySel.value === 'timeout') {
           var toModTeamVal = getSegValue('modTimeoutTeamSeg') || 'home';
           var toModTeamLabel = toModTeamVal === 'official' ? 'オフィシャル' : teamLetter(toModTeamVal);
           var toBeforeFree = val('modBeforeFree');
           var toAfterFree = val('modAfterFree');
-          pushRow(period, clock, 'タイムアウト',
-            toModTeamLabel + (toBeforeFree ? ' ' + toBeforeFree : ''),
-            toModTeamLabel + (toAfterFree ? ' ' + toAfterFree : ''));
+          var toBeforeFull = toModTeamLabel + (toBeforeFree ? ' ' + toBeforeFree : '');
+          var toAfterFull = toModTeamLabel + (toAfterFree ? ' ' + toAfterFree : '');
+          if (toBeforeFull !== toAfterFull) pushRow(period, clock, 'タイムアウト', toBeforeFull, toAfterFull);
         } else {
-          pushRow(period, clock, 'その他', val('modBeforeFree'), val('modAfterFree'));
+          var otherBefore = val('modBeforeFree');
+          var otherAfter = val('modAfterFree');
+          if (otherBefore !== otherAfter) pushRow(period, clock, 'その他', otherBefore, otherAfter);
         }
         if (clockChanged) pushRow(period, clock, 'クロック', sheetClock(clock), sheetClock(afterClock));
       }
@@ -2685,6 +2736,12 @@ textarea { resize: vertical; min-height: 56px; }
     var btn = e.currentTarget;
     var result = generate();
     if (!result) return;
+    if (!result.text) {
+      currentText = '';
+      outputEl.textContent = '変更点が見つかりませんでした。修正前後の値を変えてから押してください。';
+      outputEl.classList.add('output-empty');
+      return;
+    }
     currentText = result.text;
     outputEl.textContent = result.text;
     outputEl.classList.remove('output-empty');
