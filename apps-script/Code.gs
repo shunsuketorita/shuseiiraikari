@@ -7,15 +7,17 @@ function doGet(e) {
 
 var CORRECTION_SHEET_ID_ = '1Bipu6KVWCZMz6NNSB9LgUcr3RW-boSDnJ1FPK7W_h7g';
 var CORRECTION_SHEET_GID_ = 405669701;
-var CORRECTION_SHEET_FIRST_COL_ = 10; // column J
+var CORRECTION_SHEET_FIRST_COL_ = 1; // column A
+var CORRECTION_SHEET_CONTENT_FIRST_COL_ = 10; // column J (used to detect the next empty row)
 
 var CORRECTION_SHEET_LAST_COL_ = 18; // column R
 var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if J:R is entirely empty
+var CORRECTION_FIXED_WORKER_ = '部田';
 
 function findNextEmptyContentRow_(sheet) {
   var maxRow = sheet.getMaxRows();
-  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_FIRST_COL_ + 1;
-  var values = sheet.getRange(1, CORRECTION_SHEET_FIRST_COL_, maxRow, width).getValues();
+  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_CONTENT_FIRST_COL_ + 1;
+  var values = sheet.getRange(1, CORRECTION_SHEET_CONTENT_FIRST_COL_, maxRow, width).getValues();
   for (var r = values.length - 1; r >= 0; r--) {
     var rowHasContent = values[r].some(function (v) { return String(v).trim() !== ''; });
     if (rowHasContent) return r + 2; // 1-indexed row after this one
@@ -23,11 +25,20 @@ function findNextEmptyContentRow_(sheet) {
   return CORRECTION_SHEET_DEFAULT_START_ROW_;
 }
 
-function appendRowsToSheet(tsvText, startRow) {
+function appendRowsToSheet(tsvText, startRow, meta) {
   var lines = String(tsvText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
   if (!lines.length) {
     throw new Error('書き込む内容がありません。');
   }
+  meta = meta || {};
+  var prefix = [
+    meta.workDate || '',
+    CORRECTION_FIXED_WORKER_,
+    meta.gameDate || '',
+    meta.home || '',
+    meta.away || '',
+    '', '', '', ''
+  ];
 
   var ss = SpreadsheetApp.openById(CORRECTION_SHEET_ID_);
   var sheet = null;
@@ -37,12 +48,13 @@ function appendRowsToSheet(tsvText, startRow) {
   }
   if (!sheet) sheet = ss.getSheets()[0];
 
-  var rows = lines.map(function (line) { return line.split('\t'); });
-  var width = rows.reduce(function (n, r) { return Math.max(n, r.length); }, 0);
-  rows = rows.map(function (r) {
-    while (r.length < width) r.push('');
-    return r;
+  var contentWidth = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_CONTENT_FIRST_COL_ + 1;
+  var rows = lines.map(function (line) {
+    var cells = line.split('\t');
+    while (cells.length < contentWidth) cells.push('');
+    return prefix.concat(cells);
   });
+  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_FIRST_COL_ + 1;
 
   var targetRow = (startRow && parseInt(startRow, 10) > 0) ? parseInt(startRow, 10) : findNextEmptyContentRow_(sheet);
   sheet.getRange(targetRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
@@ -96,6 +108,11 @@ function parseGameTeamNames_(html) {
   return names.length === 2 ? { home: names[0], away: names[1] } : null;
 }
 
+function parseGameDate_(html) {
+  var m = /<p class="ba-scoreBoard__info">\s*(\d{1,2}\/\d{1,2})/.exec(html);
+  return m ? m[1] : null;
+}
+
 var BLEAGUE_DIVISIONS_ = ['premier', 'one', 'next'];
 
 function widgetUrl_(division, gameId, page) {
@@ -132,13 +149,17 @@ function fetchGameText(input) {
   }
 
   var teams = null;
+  var gameDate = null;
   try {
     var sbRes = UrlFetchApp.fetch(widgetUrl_(division, gameId, 'scoreboard'), { muteHttpExceptions: true });
     if (sbRes.getResponseCode() === 200) {
-      teams = parseGameTeamNames_(sbRes.getContentText());
+      var sbHtml = sbRes.getContentText();
+      teams = parseGameTeamNames_(sbHtml);
+      gameDate = parseGameDate_(sbHtml);
     }
   } catch (e) {
     teams = null;
+    gameDate = null;
   }
 
   var homeNums = {}, awayNums = {};
@@ -160,6 +181,7 @@ function fetchGameText(input) {
   return {
     quarters: quarters,
     teams: teams,
+    gameDate: gameDate,
     division: DIVISION_LABELS_[division] || division,
     homeRoster: toSortedNums(homeNums),
     awayRoster: toSortedNums(awayNums)
