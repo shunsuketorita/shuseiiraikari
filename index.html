@@ -448,7 +448,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:20</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:34</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -3101,9 +3101,31 @@ textarea { resize: vertical; min-height: 56px; }
     var gameLoadResultsEl = document.getElementById('gameLoadResults');
     var lastSelectedPlayRow = null;
 
+    function periodValueForQuarter(qName, qIndex) {
+      var m = /^第(\d+)クォーター$/.exec(qName);
+      if (m) return m[1] + 'Q';
+      var otm = /OT\s*(\d+)/i.exec(qName) || /延長\s*(\d+)/.exec(qName);
+      if (otm) return 'OT' + otm[1];
+      if (qIndex >= 4) return 'OT' + (qIndex - 3);
+      return null;
+    }
+
+    function selectPeriod(val) {
+      if (!val) return;
+      var seg = document.getElementById('seg-period');
+      var btn = seg.querySelector('button[data-val="' + val + '"]');
+      var otm = /^OT(\d+)$/.exec(val);
+      if (!btn && otm) {
+        var need = parseInt(otm[1], 10);
+        while (otCount < need) document.getElementById('addOTBtn').click();
+        btn = seg.querySelector('button[data-val="' + val + '"]');
+      }
+      if (btn) btn.click();
+    }
+
     function renderGameLoadResults() {
       gameLoadResultsEl.innerHTML = '';
-      gameQuartersData.forEach(function (q) {
+      gameQuartersData.forEach(function (q, qi) {
         var block = document.createElement('div');
         block.className = 'game-quarter-block';
 
@@ -3135,6 +3157,7 @@ textarea { resize: vertical; min-height: 56px; }
           row.appendChild(teamSpan);
           row.appendChild(descSpan);
           row.addEventListener('click', function () {
+            selectPeriod(periodValueForQuarter(q.name, qi));
             var lines = [];
             for (var k = pi; k < Math.min(pi + 5, q.plays.length); k++) {
               lines.push(q.plays[k].time, q.plays[k].team, q.plays[k].desc);
