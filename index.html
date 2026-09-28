@@ -448,7 +448,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:08</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:20</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -3161,10 +3161,34 @@ textarea { resize: vertical; min-height: 56px; }
       gameLoadStatusEl.textContent = '読み込み中…';
       gameLoadResultsEl.innerHTML = '';
       google.script.run
-        .withSuccessHandler(function (quarters) {
-          gameQuartersData = quarters || [];
+        .withSuccessHandler(function (result) {
+          gameQuartersData = (result && result.quarters) || [];
           var total = gameQuartersData.reduce(function (n, q) { return n + q.plays.length; }, 0);
-          gameLoadStatusEl.textContent = gameQuartersData.length + 'クォーター・' + total + 'プレーを読み込みました。';
+          var statusParts = [gameQuartersData.length + 'クォーター・' + total + 'プレーを読み込みました。'];
+
+          if (result && result.teams) {
+            homeNameInput.value = result.teams.home;
+            awayNameInput.value = result.teams.away;
+            homeNameInput.dispatchEvent(new Event('input'));
+            awayNameInput.dispatchEvent(new Event('input'));
+            statusParts.push('チーム名: ' + result.teams.home + ' vs ' + result.teams.away);
+          }
+          if (result && result.homeRoster && result.homeRoster.length) {
+            rosterData.home = result.homeRoster;
+            saveRosterData();
+            buildRosterGrid('home');
+          }
+          if (result && result.awayRoster && result.awayRoster.length) {
+            rosterData.away = result.awayRoster;
+            saveRosterData();
+            buildRosterGrid('away');
+          }
+          if ((result && result.homeRoster && result.homeRoster.length) || (result && result.awayRoster && result.awayRoster.length)) {
+            refreshAllRosterSelects();
+            statusParts.push('背番号: ホーム' + (result.homeRoster || []).length + '人・アウェイ' + (result.awayRoster || []).length + '人');
+          }
+
+          gameLoadStatusEl.textContent = statusParts.join(' / ');
           renderGameLoadResults();
         })
         .withFailureHandler(function (err) {

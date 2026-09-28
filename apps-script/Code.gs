@@ -42,14 +42,24 @@ function parseGameWidgetHtml_(html) {
   return quarters;
 }
 
+function parseGameTeamNames_(html) {
+  var re = /<div class="ba-scoreBoard__teamName">\s*<a[^>]*>([^<]*)<\/a>/g;
+  var names = [];
+  var m;
+  while ((m = re.exec(html)) && names.length < 2) {
+    names.push(decodeHtmlEntities_(m[1].trim()));
+  }
+  return names.length === 2 ? { home: names[0], away: names[1] } : null;
+}
+
 function fetchGameText(input) {
   var m = /(\d{5,7})/.exec(String(input || ''));
   if (!m) {
     throw new Error('試合IDが見つかりませんでした。試合ページのURL、または試合IDを入力してください。');
   }
   var gameId = m[1];
-  var url = 'https://sports.yahoo.co.jp/basket/widget/ds/pc/premier/games/' + gameId + '/text_live.html';
-  var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  var textUrl = 'https://sports.yahoo.co.jp/basket/widget/ds/pc/premier/games/' + gameId + '/text_live.html';
+  var res = UrlFetchApp.fetch(textUrl, { muteHttpExceptions: true });
   var code = res.getResponseCode();
   if (code !== 200) {
     throw new Error('読み込みに失敗しました(HTTP ' + code + ')。試合IDを確認してください。');
@@ -58,5 +68,37 @@ function fetchGameText(input) {
   if (!quarters.length) {
     throw new Error('プレーが見つかりませんでした。試合開始前か、ページの形式が変わった可能性があります。');
   }
-  return quarters;
+
+  var teams = null;
+  try {
+    var scoreboardUrl = 'https://sports.yahoo.co.jp/basket/widget/ds/pc/premier/games/' + gameId + '/scoreboard.html';
+    var sbRes = UrlFetchApp.fetch(scoreboardUrl, { muteHttpExceptions: true });
+    if (sbRes.getResponseCode() === 200) {
+      teams = parseGameTeamNames_(sbRes.getContentText());
+    }
+  } catch (e) {
+    teams = null;
+  }
+
+  var homeNums = {}, awayNums = {};
+  if (teams) {
+    quarters.forEach(function (q) {
+      q.plays.forEach(function (p) {
+        var pm = /^#(\d+)\s/.exec(p.desc);
+        if (!pm) return;
+        if (p.team === teams.home) homeNums[pm[1]] = true;
+        else if (p.team === teams.away) awayNums[pm[1]] = true;
+      });
+    });
+  }
+  var toSortedNums = function (obj) {
+    return Object.keys(obj).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+  };
+
+  return {
+    quarters: quarters,
+    teams: teams,
+    homeRoster: toSortedNums(homeNums),
+    awayRoster: toSortedNums(awayNums)
+  };
 }
