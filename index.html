@@ -260,6 +260,9 @@ label {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+.two-col:has(> .team-seg-cell) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
 input[type="text"], select, textarea {
   width: 100%;
   background: var(--panel-2);
@@ -335,89 +338,6 @@ textarea { resize: vertical; min-height: 56px; }
 .copy-btn:hover { border-color: var(--text-faint); color: var(--text); }
 .copy-btn.copied { border-color: var(--success); color: var(--success); }
 
-.history-item {
-  border-top: 1px solid var(--border-soft);
-  padding: 12px 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: flex-start;
-}
-.history-item:first-child { border-top: none; padding-top: 4px; }
-.history-item.minimized {
-  padding: 7px 0;
-  align-items: center;
-}
-.history-text-mini {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-faint);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.history-text {
-  font-family: var(--mono);
-  font-size: 12.5px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--text-dim);
-  flex: 1;
-}
-.history-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.history-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-.history-status { display: flex; gap: 10px; }
-.hist-check {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-}
-.hist-check input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: var(--primary);
-}
-.hist-check.on { color: var(--success); }
-.history-period-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.icon-btn {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-faint);
-  border-radius: 6px;
-  padding: 5px 8px;
-  font-size: 11.5px;
-  font-family: var(--sans);
-  cursor: pointer;
-}
-.icon-btn:hover { color: var(--text); border-color: var(--text-faint); }
-.history-empty { color: var(--text-faint); font-size: 13px; }
-
-.badge {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 5px;
-  margin-right: 6px;
-}
-.badge.home { background: color-mix(in srgb, var(--home) 20%, transparent); color: var(--home); }
-.badge.away { background: color-mix(in srgb, var(--away) 20%, transparent); color: var(--away); }
-
 .roster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
@@ -475,8 +395,10 @@ textarea { resize: vertical; min-height: 56px; }
   font-size: 12px;
 }
 .roster-pick-custom-btn {
+  grid-column: span 2;
   font-family: var(--sans);
   font-size: 12px;
+  white-space: nowrap;
   color: var(--text-faint);
   border-style: dashed;
 }
@@ -489,10 +411,10 @@ textarea { resize: vertical; min-height: 56px; }
   <div class="hero">
     <div>
       <h1>修正依頼テンプレ作成 <span class="wip-badge">編集中</span></h1>
-      <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
+      <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 00:30</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 00:51</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -508,7 +430,6 @@ textarea { resize: vertical; min-height: 56px; }
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
         <li>画面下の「スプレッドシート用に生成してコピー」を押すと、タブ区切りの行(Q列〜R列分)が自動で作られてコピーされます。</li>
         <li>スプレッドシートのQ列(該当行)を選んでそのまま貼り付けます。複数行できた場合は、そのまま連続して貼り付けられます。</li>
-        <li>送信履歴の「送信済み」「修正確認済み」のチェックボックスを、貼り付けたら・修正を確認できたら、それぞれチェックします。</li>
       </ol>
     </div>
   </div>
@@ -623,7 +544,7 @@ textarea { resize: vertical; min-height: 56px; }
           </div>
 
           <div class="row two-col" id="panelATeamPlayerRow">
-            <div>
+            <div class="team-seg-cell">
               <label>チーム</label>
               <div class="seg team-seg" id="panelATeamSeg">
                 <button data-val="home" class="active" type="button">ホーム</button>
@@ -835,7 +756,7 @@ textarea { resize: vertical; min-height: 56px; }
 
         <p class="section-sub" style="margin-top:14px;" id="modRecordLabel">記録</p>
         <div class="row two-col" id="modRecordRow">
-          <div>
+          <div class="team-seg-cell">
             <label>チーム</label>
             <div class="seg team-seg" id="modTeamSeg">
               <button data-val="home" class="active" type="button">ホーム</button>
@@ -921,15 +842,6 @@ textarea { resize: vertical; min-height: 56px; }
           <button class="copy-btn" id="copyBtn" type="button">コピー</button>
         </div>
       </div>
-
-      <div class="panel">
-        <p class="section-label">送信履歴(この端末のみに保存)</p>
-        <div id="historyPeriodFilter" class="history-period-filter"></div>
-        <div id="historyList">
-          <p class="history-empty">まだ履歴はありません。</p>
-        </div>
-        <button class="theme-toggle" id="historyMoreBtn" type="button" style="display:none;margin-top:10px;">もっと見る</button>
-      </div>
     </div>
 
   </div>
@@ -945,7 +857,6 @@ textarea { resize: vertical; min-height: 56px; }
 (function () {
   var root = document.documentElement;
   var THEME_KEY = 'fls_theme';
-  var HISTORY_KEY = 'fls_history';
   var TEAM_KEY = 'fls_team_current';
 
   function applyStoredTheme() {
@@ -1718,7 +1629,7 @@ textarea { resize: vertical; min-height: 56px; }
       if (modCategorySel.value === 'rebound') {
         modFieldsContainer.innerHTML =
           '<div class="row two-col">' +
-          '<div>' +
+          '<div class="team-seg-cell">' +
           '<label>修正後のチーム</label>' +
           '<div class="seg team-seg" id="modAfterPlayerTeamSeg">' +
           '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
@@ -1744,12 +1655,12 @@ textarea { resize: vertical; min-height: 56px; }
             '<div id="modBlockReboundInputs" style="display:none;margin-top:12px;">' +
             '<p class="section-sub">修正前のリバウンド</p>' +
             '<div class="row two-col">' +
-            '<div><label>チーム</label>' + homeAwaySegHTML('modBlockReboundBeforeTeamSeg') + '</div>' +
+            '<div class="team-seg-cell"><label>チーム</label>' + homeAwaySegHTML('modBlockReboundBeforeTeamSeg') + '</div>' +
             '<div><label for="modBlockReboundBeforePlayer-select">背番号</label>' + rosterPickerHTML('modBlockReboundBeforePlayer', 'same', 'チームリバウンド', 'modBlockReboundBeforeTeamSeg') + '</div>' +
             '</div>' +
             '<p class="section-sub" style="margin-top:14px;">修正後のリバウンド</p>' +
             '<div class="row two-col">' +
-            '<div><label>チーム</label>' + homeAwaySegHTML('modBlockReboundAfterTeamSeg') + '</div>' +
+            '<div class="team-seg-cell"><label>チーム</label>' + homeAwaySegHTML('modBlockReboundAfterTeamSeg') + '</div>' +
             '<div><label for="modBlockReboundAfterPlayer-select">背番号</label>' + rosterPickerHTML('modBlockReboundAfterPlayer', 'same', 'チームリバウンド', 'modBlockReboundAfterTeamSeg') + '</div>' +
             '</div>' +
             '<div class="row" style="margin-top:14px;">' +
@@ -1853,7 +1764,7 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (def.field === 'foulFull') {
       modFieldsContainer.innerHTML =
         '<div class="row two-col">' +
-        '<div><label>修正後のチーム</label>' +
+        '<div class="team-seg-cell"><label>修正後のチーム</label>' +
         '<div class="seg team-seg" id="modFoulAfterTeamSeg">' +
         '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
         '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
@@ -1888,7 +1799,7 @@ textarea { resize: vertical; min-height: 56px; }
     } else if (def.field === 'turnoverFull') {
       modFieldsContainer.innerHTML =
         '<div class="row two-col">' +
-        '<div><label>修正後のチーム</label>' +
+        '<div class="team-seg-cell"><label>修正後のチーム</label>' +
         '<div class="seg team-seg" id="modTurnoverAfterTeamSeg">' +
         '<button data-val="home" class="active" type="button">' + currentHomeName() + '</button>' +
         '<button data-val="away" type="button">' + currentAwayName() + '</button>' +
@@ -2505,251 +2416,6 @@ textarea { resize: vertical; min-height: 56px; }
     return { text: rows.join('\n'), team: team, teamName: teamName, period: period };
   }
 
-  function loadHistory() {
-    try {
-      var raw = localStorage.getItem(HISTORY_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) { return []; }
-  }
-  function saveHistory(list) {
-    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 300))); } catch (e) {}
-  }
-
-  var historyShowCount = 15;
-  var historyFilterExcluded = {};
-  var historyShowSent = true;
-  var historyShowConfirmed = true;
-  var historyExpandedOverride = {};
-
-  function periodSortKey(p) {
-    var qMatch = /^(\d+)Q$/.exec(p);
-    if (qMatch) return parseInt(qMatch[1], 10);
-    var otMatch = /^OT(\d+)$/.exec(p);
-    if (otMatch) return 100 + parseInt(otMatch[1], 10);
-    return 999;
-  }
-
-  function renderHistoryInner() {
-    var list = loadHistory();
-
-    var periods = [];
-    list.forEach(function (item) {
-      if (item.period && periods.indexOf(item.period) === -1) periods.push(item.period);
-    });
-    periods.sort(function (a, b) { return periodSortKey(a) - periodSortKey(b); });
-
-    var filterEl = document.getElementById('historyPeriodFilter');
-    filterEl.innerHTML = '';
-    periods.forEach(function (p) {
-      var label = document.createElement('label');
-      var isChecked = !historyFilterExcluded[p];
-      label.className = 'hist-check' + (isChecked ? ' on' : '');
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = isChecked;
-      cb.addEventListener('change', function () {
-        if (cb.checked) { delete historyFilterExcluded[p]; }
-        else { historyFilterExcluded[p] = true; }
-        renderHistory();
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(p));
-      filterEl.appendChild(label);
-    });
-
-    function appendStatusToggle(labelText, getVal, setVal) {
-      var label = document.createElement('label');
-      label.className = 'hist-check' + (getVal() ? ' on' : '');
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = getVal();
-      cb.addEventListener('change', function () {
-        setVal(cb.checked);
-        renderHistory();
-      });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(labelText));
-      filterEl.appendChild(label);
-    }
-    appendStatusToggle('送信済みも表示', function () { return historyShowSent; }, function (v) { historyShowSent = v; });
-    appendStatusToggle('確認済みも表示', function () { return historyShowConfirmed; }, function (v) { historyShowConfirmed = v; });
-
-    var wrap = document.getElementById('historyList');
-    var moreBtn = document.getElementById('historyMoreBtn');
-
-    if (!list.length) {
-      wrap.innerHTML = '<p class="history-empty">まだ履歴はありません。</p>';
-      moreBtn.style.display = 'none';
-      return;
-    }
-
-    var filtered = [];
-    list.forEach(function (item, idx) {
-      if (item.period && historyFilterExcluded[item.period]) return;
-      if (item.sent && !historyShowSent) return;
-      if (item.confirmed && !historyShowConfirmed) return;
-      filtered.push({ item: item, idx: idx });
-    });
-
-    if (!filtered.length) {
-      wrap.innerHTML = '<p class="history-empty">該当する履歴がありません。</p>';
-      moreBtn.style.display = 'none';
-      return;
-    }
-
-    wrap.innerHTML = '';
-    var visible = filtered.slice(0, historyShowCount);
-    visible.forEach(function (entry) {
-      var item = entry.item;
-      var idx = entry.idx;
-      var key = item.id != null ? item.id : idx;
-      var isDone = !!(item.sent && item.confirmed);
-      var isMinimized = isDone && !historyExpandedOverride[key];
-
-      if (isMinimized) {
-        var miniRow = document.createElement('div');
-        miniRow.className = 'history-item minimized';
-
-        var miniText = document.createElement('div');
-        miniText.className = 'history-text-mini';
-        var miniBadge = document.createElement('span');
-        miniBadge.className = 'badge ' + item.team;
-        miniBadge.textContent = item.teamName || (item.team === 'home' ? 'ホーム' : 'アウェイ');
-        miniText.appendChild(miniBadge);
-        var oneLine = item.text.replace(/\n/g, ' ／ ');
-        var truncated = oneLine.length > 40 ? oneLine.slice(0, 40) + '…' : oneLine;
-        miniText.appendChild(document.createTextNode(truncated));
-        miniRow.appendChild(miniText);
-
-        var expandB = document.createElement('button');
-        expandB.className = 'icon-btn';
-        expandB.type = 'button';
-        expandB.textContent = '展開';
-        expandB.addEventListener('click', function () {
-          historyExpandedOverride[key] = true;
-          renderHistory();
-        });
-        miniRow.appendChild(expandB);
-
-        wrap.appendChild(miniRow);
-        return;
-      }
-
-      var row = document.createElement('div');
-      row.className = 'history-item';
-
-      var textWrap = document.createElement('div');
-      textWrap.className = 'history-text';
-      var badge = document.createElement('span');
-      badge.className = 'badge ' + item.team;
-      badge.textContent = item.teamName || (item.team === 'home' ? 'ホーム' : 'アウェイ');
-      textWrap.appendChild(badge);
-      textWrap.appendChild(document.createTextNode(item.text));
-      row.appendChild(textWrap);
-
-      var right = document.createElement('div');
-      right.className = 'history-right';
-
-      var status = document.createElement('div');
-      status.className = 'history-status';
-
-      function makeCheck(labelText, key) {
-        var label = document.createElement('label');
-        label.className = 'hist-check';
-        if (item[key]) label.classList.add('on');
-        var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = !!item[key];
-        cb.addEventListener('change', function () {
-          var l = loadHistory();
-          if (!l[idx]) return;
-          l[idx][key] = cb.checked;
-          saveHistory(l);
-          renderHistory();
-        });
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(labelText));
-        return label;
-      }
-      status.appendChild(makeCheck('送信済み', 'sent'));
-      status.appendChild(makeCheck('修正確認済み', 'confirmed'));
-      right.appendChild(status);
-
-      var actions = document.createElement('div');
-      actions.className = 'history-actions';
-
-      var copyB = document.createElement('button');
-      copyB.className = 'icon-btn';
-      copyB.type = 'button';
-      copyB.textContent = 'コピー';
-      copyB.addEventListener('click', function () { copyText(item.text, copyB); });
-      actions.appendChild(copyB);
-
-      var delB = document.createElement('button');
-      delB.className = 'icon-btn';
-      delB.type = 'button';
-      delB.textContent = '削除';
-      delB.addEventListener('click', function () {
-        var l = loadHistory();
-        l.splice(idx, 1);
-        saveHistory(l);
-        renderHistory();
-      });
-      actions.appendChild(delB);
-
-      if (isDone) {
-        var collapseB = document.createElement('button');
-        collapseB.className = 'icon-btn';
-        collapseB.type = 'button';
-        collapseB.textContent = '折りたたむ';
-        collapseB.addEventListener('click', function () {
-          delete historyExpandedOverride[key];
-          renderHistory();
-        });
-        actions.appendChild(collapseB);
-      }
-
-      right.appendChild(actions);
-      row.appendChild(right);
-      wrap.appendChild(row);
-    });
-
-    if (filtered.length > historyShowCount) {
-      moreBtn.style.display = '';
-      moreBtn.textContent = 'もっと見る(残り' + (filtered.length - historyShowCount) + '件)';
-    } else {
-      moreBtn.style.display = 'none';
-    }
-  }
-
-  function renderHistory() {
-    var wrap = document.getElementById('historyList');
-    var startHeight = wrap.offsetHeight;
-    wrap.style.transition = '';
-    renderHistoryInner();
-    var endHeight = wrap.scrollHeight;
-    if (Math.abs(endHeight - startHeight) < 2) return;
-    wrap.style.overflow = 'hidden';
-    wrap.style.height = startHeight + 'px';
-    void wrap.offsetHeight;
-    requestAnimationFrame(function () {
-      wrap.style.transition = 'height 0.25s ease';
-      wrap.style.height = endHeight + 'px';
-    });
-    wrap.addEventListener('transitionend', function handler(e) {
-      if (e.propertyName && e.propertyName !== 'height') return;
-      wrap.style.transition = '';
-      wrap.style.height = '';
-      wrap.style.overflow = '';
-      wrap.removeEventListener('transitionend', handler);
-    });
-  }
-
-  document.getElementById('historyMoreBtn').addEventListener('click', function () {
-    historyShowCount += 15;
-    renderHistory();
-  });
-
   function copyText(text, btn) {
     function done() {
       var original = btn.textContent;
@@ -2795,11 +2461,6 @@ textarea { resize: vertical; min-height: 56px; }
     currentText = result.text;
     outputEl.textContent = result.text;
     outputEl.classList.remove('output-empty');
-
-    var list = loadHistory();
-    list.unshift({ id: Date.now() + '_' + Math.random().toString(36).slice(2), text: result.text, team: result.team, teamName: result.teamName, period: result.period });
-    saveHistory(list);
-    renderHistory();
 
     var resultColumn = document.getElementById('resultColumn');
     if (resultColumn) resultColumn.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3367,7 +3028,6 @@ textarea { resize: vertical; min-height: 56px; }
     document.getElementById('panelAPasteResult').textContent = '';
   });
 
-  renderHistory();
 })();
 </script>
 </body>
