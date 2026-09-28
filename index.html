@@ -344,6 +344,40 @@ textarea { resize: vertical; min-height: 56px; }
   gap: 6px;
   margin-bottom: 8px;
 }
+.game-quarter-block { margin-top: 10px; }
+.game-quarter-toggle {
+  width: 100%;
+  text-align: left;
+}
+.game-play-list {
+  display: none;
+  margin-top: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+}
+.game-play-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel);
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.game-play-row:last-child { border-bottom: none; }
+.game-play-row:hover { background: var(--panel-2); }
+.game-play-row.selected { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--text); }
+.game-play-time { font-family: var(--mono); color: var(--text-faint); flex-shrink: 0; width: 4.5em; }
+.game-play-team { flex-shrink: 0; font-weight: 600; width: 4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-play-desc { flex: 1; min-width: 0; }
 .roster-slot {
   width: 100%;
   text-align: center;
@@ -414,7 +448,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 00:51</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:08</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -425,6 +459,7 @@ textarea { resize: vertical; min-height: 56px; }
       <ol>
         <li>「チーム名・背番号」に、ホーム/アウェイのチーム名・チーム記号(1文字)と選手の背番号を登録します(最初に一度だけ)。</li>
         <li>「ログ修正」「ログ挿入」「ログ削除」から、今回やりたいことを選びます。</li>
+        <li>(Apps Script版のみ)「試合を読み込む」にYahoo!スポーツの試合URLか試合IDを入力して「読み込む」を押すと、その試合の全プレーが読み込まれます。クォーターを開いて該当プレーを押すだけで自動入力できます。</li>
         <li>FLSのACTION LOGなどから対象プレーの行をコピーして「FLSのプレイバイプレイを貼り付けて自動入力」欄に貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
         <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
@@ -489,6 +524,19 @@ textarea { resize: vertical; min-height: 56px; }
           <button class="theme-toggle" id="teamRosterClearBtn" type="button">チーム名・背番号を一括削除</button>
         </div>
         </div>
+      </div>
+
+      <div class="panel" id="gameLoadPanel" style="display:none;">
+        <p class="section-label" style="margin-bottom:2px;">試合を読み込む</p>
+        <p class="section-sub" style="margin:0 0 10px;">Yahoo!スポーツの試合URLか試合IDを入力すると、プレーを選ぶだけで自動入力できます</p>
+        <div class="row">
+          <input type="text" id="gameLoadInput" placeholder="例: https://sports.yahoo.co.jp/basket/bleague/premier/game/506396/text または 506396">
+        </div>
+        <div class="row" style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="theme-toggle" id="gameLoadBtn" type="button">読み込む</button>
+          <span id="gameLoadStatus" style="font-size:12.5px;color:var(--text-faint);"></span>
+        </div>
+        <div id="gameLoadResults"></div>
       </div>
 
       <div class="panel">
@@ -2982,13 +3030,12 @@ textarea { resize: vertical; min-height: 56px; }
     updatePanelAPlayerRequirement();
   }
 
-  document.getElementById('modPasteBtn').addEventListener('click', function () {
-    var text = document.getElementById('modPasteInput').value;
+  function runModPaste(text) {
     var resultEl = document.getElementById('modPasteResult');
     var parsed = parsePlayByPlayText(text);
     if (!parsed) {
       resultEl.textContent = 'プレー内容を認識できませんでした。手動で入力してください。';
-      return;
+      return false;
     }
     applyParsedPlay(parsed);
     document.getElementById('memo').value = '';
@@ -2997,6 +3044,11 @@ textarea { resize: vertical; min-height: 56px; }
     if (parsed.jersey) parts.push('背番号: ' + fmtPlayer(parsed.jersey));
     parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
     resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。修正後の欄にも同じ内容を入れてあるので、間違っている項目だけ変更してください。';
+    return true;
+  }
+
+  document.getElementById('modPasteBtn').addEventListener('click', function () {
+    runModPaste(document.getElementById('modPasteInput').value);
   });
 
   document.getElementById('modPasteClearBtn').addEventListener('click', function () {
@@ -3004,13 +3056,12 @@ textarea { resize: vertical; min-height: 56px; }
     document.getElementById('modPasteResult').textContent = '';
   });
 
-  document.getElementById('panelAPasteBtn').addEventListener('click', function () {
-    var text = document.getElementById('panelAPasteInput').value;
+  function runPanelAPaste(text) {
     var resultEl = document.getElementById('panelAPasteResult');
     var parsed = parsePlayByPlayText(text);
     if (!parsed) {
       resultEl.textContent = 'プレー内容を認識できませんでした。手動で入力してください。';
-      return;
+      return false;
     }
     applyParsedPlayToPanelA(parsed);
     document.getElementById('memo').value = '';
@@ -3021,12 +3072,107 @@ textarea { resize: vertical; min-height: 56px; }
     parts.push(parsed.clock ? ('時間: ' + parsed.clock.min + ':' + parsed.clock.sec) : '時間: 判定できず');
     var note = playType === 'other' ? ' 「その他」欄に自動入力したので、内容を確認・修正してください。' : ' 読み取れなかった項目や間違っている項目は手動で直してください。';
     resultEl.textContent = '自動入力しました(' + parts.join(' / ') + ')。' + note;
+    return true;
+  }
+
+  document.getElementById('panelAPasteBtn').addEventListener('click', function () {
+    runPanelAPaste(document.getElementById('panelAPasteInput').value);
   });
 
   document.getElementById('panelAPasteClearBtn').addEventListener('click', function () {
     document.getElementById('panelAPasteInput').value = '';
     document.getElementById('panelAPasteResult').textContent = '';
   });
+
+  function runAutofillFromGameText(text) {
+    if (getSegValue('seg-correction') === '修正') {
+      document.getElementById('modPasteInput').value = text;
+      return runModPaste(text);
+    }
+    document.getElementById('panelAPasteInput').value = text;
+    return runPanelAPaste(text);
+  }
+
+  var gameLoadPanel = document.getElementById('gameLoadPanel');
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    gameLoadPanel.style.display = '';
+    var gameQuartersData = [];
+    var gameLoadStatusEl = document.getElementById('gameLoadStatus');
+    var gameLoadResultsEl = document.getElementById('gameLoadResults');
+    var lastSelectedPlayRow = null;
+
+    function renderGameLoadResults() {
+      gameLoadResultsEl.innerHTML = '';
+      gameQuartersData.forEach(function (q) {
+        var block = document.createElement('div');
+        block.className = 'game-quarter-block';
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'theme-toggle game-quarter-toggle';
+        toggle.textContent = q.name + '(' + q.plays.length + '件)';
+
+        var list = document.createElement('div');
+        list.className = 'game-play-list';
+        toggle.addEventListener('click', function () {
+          list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        });
+
+        q.plays.forEach(function (p, pi) {
+          var row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'game-play-row';
+          var timeSpan = document.createElement('span');
+          timeSpan.className = 'game-play-time';
+          timeSpan.textContent = p.time.replace('残り', '');
+          var teamSpan = document.createElement('span');
+          teamSpan.className = 'game-play-team';
+          teamSpan.textContent = p.team;
+          var descSpan = document.createElement('span');
+          descSpan.className = 'game-play-desc';
+          descSpan.textContent = p.desc;
+          row.appendChild(timeSpan);
+          row.appendChild(teamSpan);
+          row.appendChild(descSpan);
+          row.addEventListener('click', function () {
+            var lines = [];
+            for (var k = pi; k < Math.min(pi + 5, q.plays.length); k++) {
+              lines.push(q.plays[k].time, q.plays[k].team, q.plays[k].desc);
+            }
+            runAutofillFromGameText(lines.join('\n'));
+            if (lastSelectedPlayRow) lastSelectedPlayRow.classList.remove('selected');
+            row.classList.add('selected');
+            lastSelectedPlayRow = row;
+            var target = getSegValue('seg-correction') === '修正' ? modPanelWrap : document.getElementById('panelAWrap');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          list.appendChild(row);
+        });
+
+        block.appendChild(toggle);
+        block.appendChild(list);
+        gameLoadResultsEl.appendChild(block);
+      });
+    }
+
+    document.getElementById('gameLoadBtn').addEventListener('click', function () {
+      var input = document.getElementById('gameLoadInput').value.trim();
+      if (!input) return;
+      gameLoadStatusEl.textContent = '読み込み中…';
+      gameLoadResultsEl.innerHTML = '';
+      google.script.run
+        .withSuccessHandler(function (quarters) {
+          gameQuartersData = quarters || [];
+          var total = gameQuartersData.reduce(function (n, q) { return n + q.plays.length; }, 0);
+          gameLoadStatusEl.textContent = gameQuartersData.length + 'クォーター・' + total + 'プレーを読み込みました。';
+          renderGameLoadResults();
+        })
+        .withFailureHandler(function (err) {
+          gameLoadStatusEl.textContent = (err && err.message) || '読み込みに失敗しました。';
+        })
+        .fetchGameText(input);
+    });
+  }
 
 })();
 </script>
