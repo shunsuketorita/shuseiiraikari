@@ -492,7 +492,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、現地に送るチャット文にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-28 12:54</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-28 13:07</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -555,6 +555,9 @@ textarea { resize: vertical; min-height: 56px; }
           <label id="rosterAwayLabel">アウェイ 背番号一覧</label>
           <div class="roster-grid" id="rosterAwayGrid"></div>
           <button class="roster-add-btn" id="rosterAwayAddBtn" type="button">+ 選手を追加</button>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button class="theme-toggle" id="teamRosterClearBtn" type="button">チーム名・背番号を一括削除</button>
         </div>
         </div>
       </div>
@@ -1168,6 +1171,24 @@ textarea { resize: vertical; min-height: 56px; }
 
   document.getElementById('rosterHomeAddBtn').addEventListener('click', function () { addRosterSlot('home'); });
   document.getElementById('rosterAwayAddBtn').addEventListener('click', function () { addRosterSlot('away'); });
+
+  document.getElementById('teamRosterClearBtn').addEventListener('click', function () {
+    if (!confirm('チーム名・チーム記号・背番号一覧をすべて削除します。よろしいですか?')) return;
+    homeNameInput.value = '';
+    awayNameInput.value = '';
+    homeLetterInput.value = '';
+    awayLetterInput.value = '';
+    rosterData.home = [];
+    rosterData.away = [];
+    saveRosterData();
+    saveCurrentTeam();
+    buildRosterGrid('home');
+    buildRosterGrid('away');
+    refreshTeamLabels();
+    refreshRosterLabels();
+    refreshAllRosterSelects();
+    updateTeamRosterSummary();
+  });
 
   buildRosterGrid('home');
   buildRosterGrid('away');
@@ -3280,6 +3301,7 @@ textarea { resize: vertical; min-height: 56px; }
       return;
     }
     applyParsedPlay(parsed);
+    document.getElementById('memo').value = '';
     var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
     parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
     if (parsed.jersey) parts.push('背番号: ' + fmtPlayer(parsed.jersey));
@@ -3301,6 +3323,7 @@ textarea { resize: vertical; min-height: 56px; }
       return;
     }
     applyParsedPlayToPanelA(parsed);
+    document.getElementById('memo').value = '';
     var playType = PARSED_CATEGORY_TO_PANEL_A_PLAY_TYPE[parsed.category] || 'other';
     var parts = ['種類: ' + (CATEGORY_LABELS[parsed.category] || parsed.category)];
     parts.push(parsed.team ? ('チーム: ' + (parsed.team === 'home' ? currentHomeName() : currentAwayName())) : 'チーム: 判定できず(手動で選択してください)');
