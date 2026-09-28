@@ -5,6 +5,36 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+var CORRECTION_SHEET_ID_ = '1Bipu6KVWCZMz6NNSB9LgUcr3RW-boSDnJ1FPK7W_h7g';
+var CORRECTION_SHEET_GID_ = 405669701;
+var CORRECTION_SHEET_FIRST_COL_ = 10; // column J
+
+function appendRowsToSheet(tsvText) {
+  var lines = String(tsvText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
+  if (!lines.length) {
+    throw new Error('書き込む内容がありません。');
+  }
+
+  var ss = SpreadsheetApp.openById(CORRECTION_SHEET_ID_);
+  var sheet = null;
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getSheetId() === CORRECTION_SHEET_GID_) { sheet = sheets[i]; break; }
+  }
+  if (!sheet) sheet = ss.getSheets()[0];
+
+  var rows = lines.map(function (line) { return line.split('\t'); });
+  var width = rows.reduce(function (n, r) { return Math.max(n, r.length); }, 0);
+  rows = rows.map(function (r) {
+    while (r.length < width) r.push('');
+    return r;
+  });
+
+  var startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
+  return rows.length;
+}
+
 function decodeHtmlEntities_(s) {
   return s
     .replace(/&amp;/g, '&')

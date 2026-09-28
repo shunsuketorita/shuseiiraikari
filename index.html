@@ -448,7 +448,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:51</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-09-29 01:55</span>
       <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
     </div>
   </div>
@@ -464,7 +464,7 @@ textarea { resize: vertical; min-height: 56px; }
         <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
         <li>画面下の「スプレッドシート用に生成してコピー」を押すと、タブ区切りの行(Q列〜R列分)が自動で作られてコピーされます。</li>
-        <li>スプレッドシートのQ列(該当行)を選んでそのまま貼り付けます。複数行できた場合は、そのまま連続して貼り付けられます。</li>
+        <li>スプレッドシートのQ列(該当行)を選んでそのまま貼り付けます。複数行できた場合は、そのまま連続して貼り付けられます。(Apps Script版のみ)「スプレッドシートに書き込む」を押すと、貼り付け操作なしでそのままシートの一番下に追記されます。</li>
       </ol>
     </div>
   </div>
@@ -887,7 +887,11 @@ textarea { resize: vertical; min-height: 56px; }
         <p class="section-label">生成結果</p>
         <div class="output-card">
           <p class="output-text output-empty" id="outputText">フォームを入力して「スプレッドシート用に生成してコピー」を押してください。</p>
-          <button class="copy-btn" id="copyBtn" type="button">コピー</button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="copy-btn" id="copyBtn" type="button">コピー</button>
+            <button class="copy-btn" id="sheetWriteBtn" type="button" style="display:none;">スプレッドシートに書き込む</button>
+            <span id="sheetWriteStatus" style="font-size:12.5px;color:var(--text-faint);"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -2520,6 +2524,27 @@ textarea { resize: vertical; min-height: 56px; }
     if (!currentText) return;
     copyText(currentText, copyBtn);
   });
+
+  var sheetWriteBtn = document.getElementById('sheetWriteBtn');
+  var sheetWriteStatus = document.getElementById('sheetWriteStatus');
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    sheetWriteBtn.style.display = '';
+    sheetWriteBtn.addEventListener('click', function () {
+      if (!currentText) return;
+      sheetWriteBtn.disabled = true;
+      sheetWriteStatus.textContent = '書き込み中…';
+      google.script.run
+        .withSuccessHandler(function (count) {
+          sheetWriteBtn.disabled = false;
+          sheetWriteStatus.textContent = count + '行書き込みました。';
+        })
+        .withFailureHandler(function (err) {
+          sheetWriteBtn.disabled = false;
+          sheetWriteStatus.textContent = (err && err.message) || '書き込みに失敗しました。';
+        })
+        .appendRowsToSheet(currentText);
+    });
+  }
 
   function clickSegButton(containerId, val) {
     var container = document.getElementById(containerId);
