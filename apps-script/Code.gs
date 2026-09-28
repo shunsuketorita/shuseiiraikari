@@ -9,7 +9,21 @@ var CORRECTION_SHEET_ID_ = '1Bipu6KVWCZMz6NNSB9LgUcr3RW-boSDnJ1FPK7W_h7g';
 var CORRECTION_SHEET_GID_ = 405669701;
 var CORRECTION_SHEET_FIRST_COL_ = 10; // column J
 
-function appendRowsToSheet(tsvText) {
+var CORRECTION_SHEET_LAST_COL_ = 18; // column R
+var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if J:R is entirely empty
+
+function findNextEmptyContentRow_(sheet) {
+  var maxRow = sheet.getMaxRows();
+  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_FIRST_COL_ + 1;
+  var values = sheet.getRange(1, CORRECTION_SHEET_FIRST_COL_, maxRow, width).getValues();
+  for (var r = values.length - 1; r >= 0; r--) {
+    var rowHasContent = values[r].some(function (v) { return String(v).trim() !== ''; });
+    if (rowHasContent) return r + 2; // 1-indexed row after this one
+  }
+  return CORRECTION_SHEET_DEFAULT_START_ROW_;
+}
+
+function appendRowsToSheet(tsvText, startRow) {
   var lines = String(tsvText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
   if (!lines.length) {
     throw new Error('書き込む内容がありません。');
@@ -30,9 +44,9 @@ function appendRowsToSheet(tsvText) {
     return r;
   });
 
-  var startRow = sheet.getLastRow() + 1;
-  sheet.getRange(startRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
-  return rows.length;
+  var targetRow = (startRow && parseInt(startRow, 10) > 0) ? parseInt(startRow, 10) : findNextEmptyContentRow_(sheet);
+  sheet.getRange(targetRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
+  return { count: rows.length, startRow: targetRow };
 }
 
 function decodeHtmlEntities_(s) {
