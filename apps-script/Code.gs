@@ -7,21 +7,50 @@ function doGet(e) {
 
 var CORRECTION_SHEET_ID_ = '1Bipu6KVWCZMz6NNSB9LgUcr3RW-boSDnJ1FPK7W_h7g';
 var CORRECTION_SHEET_GID_ = 405669701;
-var CORRECTION_SHEET_FIRST_COL_ = 1; // column A
-var CORRECTION_SHEET_CONTENT_FIRST_COL_ = 10; // column J (used to detect the next empty row)
 
-var CORRECTION_SHEET_LAST_COL_ = 18; // column R
-var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if J:R is entirely empty
+// Fallbacks only, used if a header label below can't be found in row 1 of the sheet.
+var CORRECTION_SHEET_FIRST_COL_FALLBACK_ = 1; // column A (作業日)
+var CORRECTION_SHEET_CONTENT_FIRST_COL_FALLBACK_ = 10; // column J (Q)
+var CORRECTION_SHEET_LAST_COL_FALLBACK_ = 18; // column R (修正理由)
+var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if the content columns are entirely empty
 
-function findNextEmptyContentRow_(sheet) {
+// Reads row 1 and finds the columns actually in use, so a reordered/resized sheet doesn't
+// silently misalign writes — this is why Q/時間/確認内容/… previously drifted after someone
+// added or removed blank columns between AWAY and Q.
+function findHeaderColumns_(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), CORRECTION_SHEET_LAST_COL_FALLBACK_);
+  var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var find = function (matcher) {
+    for (var i = 0; i < headerRow.length; i++) {
+      if (matcher(String(headerRow[i]).trim())) return i + 1; // 1-indexed column
+    }
+    return null;
+  };
+  return {
+    firstCol: find(function (l) { return l === '作業日'; }) || CORRECTION_SHEET_FIRST_COL_FALLBACK_,
+    contentFirstCol: find(function (l) { return l === 'Q'; }) || CORRECTION_SHEET_CONTENT_FIRST_COL_FALLBACK_,
+    lastCol: find(function (l) { return l.indexOf('修正理由') === 0; }) || CORRECTION_SHEET_LAST_COL_FALLBACK_
+  };
+}
+
+function findNextEmptyContentRow_(sheet, contentFirstCol, lastCol) {
   var maxRow = sheet.getMaxRows();
-  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_CONTENT_FIRST_COL_ + 1;
-  var values = sheet.getRange(1, CORRECTION_SHEET_CONTENT_FIRST_COL_, maxRow, width).getValues();
+  var width = lastCol - contentFirstCol + 1;
+  var values = sheet.getRange(1, contentFirstCol, maxRow, width).getValues();
   for (var r = values.length - 1; r >= 0; r--) {
     var rowHasContent = values[r].some(function (v) { return String(v).trim() !== ''; });
     if (rowHasContent) return r + 2; // 1-indexed row after this one
   }
   return CORRECTION_SHEET_DEFAULT_START_ROW_;
+}
+
+function openCorrectionSheet_() {
+  var ss = SpreadsheetApp.openById(CORRECTION_SHEET_ID_);
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getSheetId() === CORRECTION_SHEET_GID_) return sheets[i];
+  }
+  return ss.getSheets()[0];
 }
 
 function appendRowsToSheet(tsvText, meta) {
@@ -30,33 +59,23 @@ function appendRowsToSheet(tsvText, meta) {
     throw new Error('書き込む内容がありません。');
   }
   meta = meta || {};
-  var prefix = [
-    meta.workDate || '',
-    meta.worker || '',
-    meta.gameDate || '',
-    meta.home || '',
-    meta.away || '',
-    '', '', '', ''
-  ];
 
-  var ss = SpreadsheetApp.openById(CORRECTION_SHEET_ID_);
-  var sheet = null;
-  var sheets = ss.getSheets();
-  for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getSheetId() === CORRECTION_SHEET_GID_) { sheet = sheets[i]; break; }
-  }
-  if (!sheet) sheet = ss.getSheets()[0];
+  var sheet = openCorrectionSheet_();
+  var cols = findHeaderColumns_(sheet);
+  var width = cols.lastCol - cols.firstCol + 1;
 
-  var contentWidth = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_CONTENT_FIRST_COL_ + 1;
+  var prefixVals = [meta.workDate || '', meta.worker || '', meta.gameDate || '', meta.home || '', meta.away || ''];
   var rows = lines.map(function (line) {
+    var rowArr = new Array(width).fill('');
+    prefixVals.forEach(function (v, i) { rowArr[(cols.firstCol + i) - cols.firstCol] = v; });
     var cells = line.split('\t');
-    while (cells.length < contentWidth) cells.push('');
-    return prefix.concat(cells);
+    for (var i = 0; i < 5; i++) { rowArr[(cols.contentFirstCol + i) - cols.firstCol] = cells[i] || ''; }
+    rowArr[cols.lastCol - cols.firstCol] = cells[8] || ''; // 修正理由 is the 9th TSV field
+    return rowArr;
   });
-  var width = CORRECTION_SHEET_LAST_COL_ - CORRECTION_SHEET_FIRST_COL_ + 1;
 
-  var targetRow = findNextEmptyContentRow_(sheet);
-  sheet.getRange(targetRow, CORRECTION_SHEET_FIRST_COL_, rows.length, width).setValues(rows);
+  var targetRow = findNextEmptyContentRow_(sheet, cols.contentFirstCol, cols.lastCol);
+  sheet.getRange(targetRow, cols.firstCol, rows.length, width).setValues(rows);
   return { count: rows.length, startRow: targetRow };
 }
 
