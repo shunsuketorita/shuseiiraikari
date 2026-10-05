@@ -451,7 +451,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-05 14:15</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-05 14:27</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -2483,7 +2483,7 @@ textarea { resize: vertical; min-height: 56px; }
     return { text: rows.join('\n'), team: team, teamName: teamName, period: period };
   }
 
-  function copyText(text, btn) {
+  function copyText(text, btn, onDone) {
     function done() {
       var original = btn.textContent;
       btn.textContent = 'コピーしました';
@@ -2492,6 +2492,7 @@ textarea { resize: vertical; min-height: 56px; }
         btn.textContent = original;
         btn.classList.remove('copied');
       }, 1500);
+      if (onDone) onDone();
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
@@ -2514,6 +2515,18 @@ textarea { resize: vertical; min-height: 56px; }
   var outputEl = document.getElementById('outputText');
   var copyBtn = document.getElementById('copyBtn');
   var currentText = '';
+  var lastSelectedPlayRowEl = null;
+  var lastSelectedPlayListEl = null;
+  var lastSelectedPlayOpenList = null; // set by the game-load block below to the accordion's "openQuarterList" setter
+
+  function scrollBackToLastPlay() {
+    if (!lastSelectedPlayRowEl) return;
+    if (lastSelectedPlayListEl && lastSelectedPlayListEl.style.display !== 'block') {
+      if (lastSelectedPlayOpenList) lastSelectedPlayOpenList(lastSelectedPlayListEl);
+      lastSelectedPlayListEl.style.display = 'block';
+    }
+    lastSelectedPlayRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   document.getElementById('generateBtn').addEventListener('click', function (e) {
     var btn = e.currentTarget;
@@ -2537,7 +2550,7 @@ textarea { resize: vertical; min-height: 56px; }
 
   copyBtn.addEventListener('click', function () {
     if (!currentText) return;
-    copyText(currentText, copyBtn);
+    copyText(currentText, copyBtn, scrollBackToLastPlay);
   });
 
   var sheetWriteBtn = document.getElementById('sheetWriteBtn');
@@ -2567,6 +2580,7 @@ textarea { resize: vertical; min-height: 56px; }
         .withSuccessHandler(function (result) {
           sheetWriteBtn.disabled = false;
           sheetWriteStatus.textContent = result.count + '行書き込みました(' + result.startRow + '行目〜)。';
+          scrollBackToLastPlay();
         })
         .withFailureHandler(function (err) {
           sheetWriteBtn.disabled = false;
@@ -3166,6 +3180,10 @@ textarea { resize: vertical; min-height: 56px; }
     var gameLoadStatusEl = document.getElementById('gameLoadStatus');
     var gameLoadResultsEl = document.getElementById('gameLoadResults');
     var openQuarterList = null;
+    lastSelectedPlayOpenList = function (list) {
+      if (openQuarterList && openQuarterList !== list) openQuarterList.style.display = 'none';
+      openQuarterList = list;
+    };
 
     function periodValueForQuarter(qName, qIndex) {
       var m = /^第(\d+)クォーター$/.exec(qName);
@@ -3233,6 +3251,8 @@ textarea { resize: vertical; min-height: 56px; }
             }
             runAutofillFromGameText(lines.join('\n'));
             row.classList.add('selected');
+            lastSelectedPlayRowEl = row;
+            lastSelectedPlayListEl = list;
             var target = getSegValue('seg-correction') === '修正' ? modPanelWrap : document.getElementById('panelAWrap');
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
