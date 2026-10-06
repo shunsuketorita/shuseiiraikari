@@ -451,7 +451,7 @@ textarea { resize: vertical; min-height: 56px; }
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-05 14:27</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-06 16:34</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -459,6 +459,10 @@ textarea { resize: vertical; min-height: 56px; }
           <input type="text" id="headerWorkerInput" placeholder="作業者" style="width:52px;padding:5px 6px;font-size:12px;">
         </span>
       </div>
+      <span id="headerSheetUrlWrap" style="display:none;align-items:center;gap:5px;">
+        <label for="headerSheetUrlInput" style="margin:0;font-size:11px;color:var(--text-faint);white-space:nowrap;">書き込み先シート</label>
+        <input type="text" id="headerSheetUrlInput" placeholder="スプレッドシートのURL" style="width:180px;padding:5px 6px;font-size:12px;">
+      </span>
     </div>
   </div>
 
@@ -2558,13 +2562,26 @@ textarea { resize: vertical; min-height: 56px; }
   var headerMetaWrap = document.getElementById('headerMetaWrap');
   var headerWorkDateInput = document.getElementById('headerWorkDateInput');
   var headerWorkerInput = document.getElementById('headerWorkerInput');
+  var headerSheetUrlWrap = document.getElementById('headerSheetUrlWrap');
+  var headerSheetUrlInput = document.getElementById('headerSheetUrlInput');
+  var SHEET_URL_KEY = 'fls_sheet_url';
+  var DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Bipu6KVWCZMz6NNSB9LgUcr3RW-boSDnJ1FPK7W_h7g/edit?gid=405669701';
   var lastLoadedGameDate = '';
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     sheetWriteBtn.style.display = '';
     headerMetaWrap.style.display = 'inline-flex';
+    headerSheetUrlWrap.style.display = 'inline-flex';
     var todayDate = new Date();
     headerWorkDateInput.value = (todayDate.getMonth() + 1) + '/' + todayDate.getDate();
     headerWorkerInput.value = '部田';
+    try {
+      headerSheetUrlInput.value = localStorage.getItem(SHEET_URL_KEY) || DEFAULT_SHEET_URL;
+    } catch (e) {
+      headerSheetUrlInput.value = DEFAULT_SHEET_URL;
+    }
+    headerSheetUrlInput.addEventListener('input', function () {
+      try { localStorage.setItem(SHEET_URL_KEY, headerSheetUrlInput.value.trim()); } catch (e) {}
+    });
     sheetWriteBtn.addEventListener('click', function () {
       if (!currentText) return;
       sheetWriteBtn.disabled = true;
@@ -2586,7 +2603,7 @@ textarea { resize: vertical; min-height: 56px; }
           sheetWriteBtn.disabled = false;
           sheetWriteStatus.textContent = (err && err.message) || '書き込みに失敗しました。';
         })
-        .appendRowsToSheet(currentText, meta);
+        .appendRowsToSheet(currentText, meta, headerSheetUrlInput.value.trim());
     });
   }
 

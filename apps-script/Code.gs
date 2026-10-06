@@ -44,23 +44,41 @@ function findNextEmptyContentRow_(sheet, contentFirstCol, lastCol) {
   return CORRECTION_SHEET_DEFAULT_START_ROW_;
 }
 
-function openCorrectionSheet_() {
-  var ss = SpreadsheetApp.openById(CORRECTION_SHEET_ID_);
+function parseSheetUrl_(input) {
+  var s = String(input || '').trim();
+  if (!s) return null;
+  var idMatch = /\/d\/([a-zA-Z0-9_-]+)/.exec(s) || /^([a-zA-Z0-9_-]{20,})$/.exec(s);
+  if (!idMatch) return null;
+  var gidMatch = /[?&#]gid=(\d+)/.exec(s);
+  return { id: idMatch[1], gid: gidMatch ? parseInt(gidMatch[1], 10) : null };
+}
+
+function openCorrectionSheet_(sheetUrl) {
+  var parsed = parseSheetUrl_(sheetUrl);
+  var sheetId = parsed ? parsed.id : CORRECTION_SHEET_ID_;
+  var gid = parsed && parsed.gid !== null ? parsed.gid : CORRECTION_SHEET_GID_;
+
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(sheetId);
+  } catch (e) {
+    throw new Error('スプレッドシートを開けませんでした。URLを確認するか、アクセス権限があるか確認してください。');
+  }
   var sheets = ss.getSheets();
   for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getSheetId() === CORRECTION_SHEET_GID_) return sheets[i];
+    if (sheets[i].getSheetId() === gid) return sheets[i];
   }
   return ss.getSheets()[0];
 }
 
-function appendRowsToSheet(tsvText, meta) {
+function appendRowsToSheet(tsvText, meta, sheetUrl) {
   var lines = String(tsvText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
   if (!lines.length) {
     throw new Error('書き込む内容がありません。');
   }
   meta = meta || {};
 
-  var sheet = openCorrectionSheet_();
+  var sheet = openCorrectionSheet_(sheetUrl);
   var cols = findHeaderColumns_(sheet);
   var width = cols.lastCol - cols.firstCol + 1;
 
