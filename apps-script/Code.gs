@@ -17,20 +17,30 @@ var CORRECTION_SHEET_DEFAULT_START_ROW_ = 2; // just below the header row, if th
 // Reads row 1 and finds the columns actually in use, so a reordered/resized sheet doesn't
 // silently misalign writes — this is why Q/時間/確認内容/… previously drifted after someone
 // added or removed blank columns between AWAY and Q.
+//
+// A label that isn't found doesn't fall back to the original sheet's fixed column number —
+// on someone else's sheet that number means nothing and just leaves a pointless gap. Instead
+// each missing label packs in right after the previous block (5 prefix columns, 5 content
+// columns), so an unrecognized sheet gets written compactly instead of with blank columns.
 function findHeaderColumns_(sheet) {
-  var lastCol = Math.max(sheet.getLastColumn(), CORRECTION_SHEET_LAST_COL_FALLBACK_);
-  var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var scanWidth = Math.max(sheet.getLastColumn(), CORRECTION_SHEET_LAST_COL_FALLBACK_);
+  var headerRow = sheet.getRange(1, 1, 1, scanWidth).getValues()[0];
   var find = function (matcher) {
     for (var i = 0; i < headerRow.length; i++) {
       if (matcher(String(headerRow[i]).trim())) return i + 1; // 1-indexed column
     }
     return null;
   };
-  return {
-    firstCol: find(function (l) { return l === '作業日'; }) || CORRECTION_SHEET_FIRST_COL_FALLBACK_,
-    contentFirstCol: find(function (l) { return l === 'Q'; }) || CORRECTION_SHEET_CONTENT_FIRST_COL_FALLBACK_,
-    lastCol: find(function (l) { return l.indexOf('修正理由') === 0; }) || CORRECTION_SHEET_LAST_COL_FALLBACK_
-  };
+
+  var firstCol = find(function (l) { return l === '作業日'; });
+  var contentFirstCol = find(function (l) { return l === 'Q'; });
+  var lastCol = find(function (l) { return l.indexOf('修正理由') === 0; });
+
+  if (!firstCol) firstCol = CORRECTION_SHEET_FIRST_COL_FALLBACK_;
+  if (!contentFirstCol) contentFirstCol = firstCol + 5; // right after 作業日/作業者/試合日/HOME/AWAY
+  if (!lastCol) lastCol = contentFirstCol + 5; // right after Q/時間/確認内容/ログ変更前/ログ変更後
+
+  return { firstCol: firstCol, contentFirstCol: contentFirstCol, lastCol: lastCol };
 }
 
 function findNextEmptyContentRow_(sheet, contentFirstCol, lastCol) {
