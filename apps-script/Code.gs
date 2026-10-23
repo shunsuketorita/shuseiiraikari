@@ -181,6 +181,34 @@ function resolveDivisionAndFetchText_(input, gameId) {
   throw new Error('読み込みに失敗しました(HTTP ' + lastCode + ')。試合IDを確認してください。');
 }
 
+var GA4_MEASUREMENT_ID_ = 'G-XXJX1HPWWG';
+
+// Apps Script pages run in a sandboxed iframe where the browser-side GA4 tag doesn't get through,
+// so the generate count is sent from here via the Measurement Protocol instead. The API secret is
+// kept in Script Properties (GA4_API_SECRET), never in source; without it this silently does nothing.
+function logGenerate(rowCount, clientId) {
+  try {
+    var secret = PropertiesService.getScriptProperties().getProperty('GA4_API_SECRET');
+    if (!secret) return;
+    var url = 'https://www.google-analytics.com/mp/collect?measurement_id=' + encodeURIComponent(GA4_MEASUREMENT_ID_) +
+      '&api_secret=' + encodeURIComponent(secret);
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        client_id: String(clientId || 'apps-script.' + Utilities.getUuid()),
+        events: [{
+          name: 'generate_text',
+          params: { row_count: Number(rowCount) || 1, engagement_time_msec: 100, source: 'apps_script' }
+        }]
+      }),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    // analytics must never break the app
+  }
+}
+
 function fetchGameText(input) {
   var m = /(\d{5,7})/.exec(String(input || ''));
   if (!m) {
