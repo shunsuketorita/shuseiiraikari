@@ -199,7 +199,13 @@ function logGenerate(rowCount, clientId) {
         client_id: String(clientId || 'apps-script.' + Utilities.getUuid()),
         events: [{
           name: 'generate_text',
-          params: { row_count: Number(rowCount) || 1, engagement_time_msec: 100, source: 'apps_script' }
+          params: {
+            row_count: Number(rowCount) || 1,
+            engagement_time_msec: 100,
+            source: 'apps_script',
+            page_title: '修正依頼テンプレ作成(Apps Script版)',
+            page_location: 'https://script.google.com/'
+          }
         }]
       }),
       muteHttpExceptions: true
