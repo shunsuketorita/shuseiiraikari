@@ -462,7 +462,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-24 01:41</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-10-24 01:48</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -2556,6 +2556,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     currentText = result.text;
     outputEl.textContent = result.text;
     outputEl.classList.remove('output-empty');
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: 'generate_text', row_count: result.text.split('\n').length });
 
     var resultColumn = document.getElementById('resultColumn');
     if (resultColumn) resultColumn.scrollIntoView({ behavior: 'smooth', block: 'start' });
