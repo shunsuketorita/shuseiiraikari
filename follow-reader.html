@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02b(移動・記憶・省電力)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02c(誤読の補正)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -646,31 +646,100 @@
   });
 
   // ---- smoothing: a single misread (e.g. 9:42 read as 3:42, 1st read as 5) must not move the list ----
-  var hist = { period: [], score: [] }, lastClock = null, lastClockAt = 0, pendingClock = null, sentPeriod = null, sentScore = null;
+  var hist = { period: [], score: [] }, lastClock = null, lastClockAt = 0, pendingClock = null, pendingClockN = 0, sentPeriod = null, sentScore = null, scoreJump = null;
   function modeOf(arr, keyFn, prev) {
     var cnt = {}, best = null, bestN = 0;
     arr.forEach(function (v) { var k = keyFn(v); cnt[k] = (cnt[k] || 0) + 1; });
     arr.forEach(function (v) { var k = keyFn(v); if (cnt[k] > bestN || (cnt[k] === bestN && prev && keyFn(prev) === k)) { best = v; bestN = cnt[k]; } });
     return best;
   }
+  // digits this font makes OCR mix up (seen live: 7 read as 1, 5 read as 9)
+  var CONFUSABLE = { '0': '86', '1': '7', '2': '7', '3': '85', '5': '963', '6': '58', '7': '12', '8': '3690', '9': '58' };
+  function digitVariants(str) { // [{s, cost}]: the string itself, plus every single-digit swap
+    var out = [{ s: str, cost: 0 }];
+    for (var i = 0; i < str.length; i++) {
+      (CONFUSABLE[str[i]] || '').split('').forEach(function (c) { if (c) out.push({ s: str.slice(0, i) + c + str.slice(i + 1), cost: 1 }); });
+    }
+    return out;
+  }
+  // The clock only runs down (and stands still): use that to undo a single misread digit.
+  function repairClock(c) {
+    if (lastClock === null) return c;
+    var el = (Date.now() - lastClockAt) / 1000, lo = lastClock - el * 1.5 - 3, hi = lastClock + 3, mid = lastClock - el;
+    var sec0 = c.min * 60 + c.sec;
+    if (sec0 >= lo && sec0 <= hi) return c;
+    var str = String(c.min) + String(c.sec).padStart(2, '0'), best = null, bestGap = 1e9;
+    digitVariants(str).forEach(function (v) {
+      if (!v.cost) return;
+      var sec = +v.s.slice(-2), min = +v.s.slice(0, -2), total = min * 60 + sec;
+      if (sec < 60 && total >= lo && total <= hi && Math.abs(total - mid) < bestGap) { best = { min: min, sec: sec }; bestGap = Math.abs(total - mid); }
+    });
+    return best || c;
+  }
+  function scorePlausible(n, last) { // one team scores 1-3 points between readings, or nothing changes
+    var dh = n.home - last.home, da = n.away - last.away;
+    return dh >= 0 && da >= 0 && dh + da <= 3 && (dh === 0 || da === 0);
+  }
+  function repairScore(n) { // null when it cannot be a real continuation of the last score
+    if (!sentScore || scorePlausible(n, sentScore)) return n;
+    var best = null, bestCost = 9;
+    digitVariants(String(n.home)).forEach(function (h) {
+      digitVariants(String(n.away)).forEach(function (a) {
+        var cand = { home: +h.s, away: +a.s };
+        if (h.cost + a.cost < bestCost && scorePlausible(cand, sentScore)) { best = cand; bestCost = h.cost + a.cost; }
+      });
+    });
+    return best;
+  }
   function stabilize(raw) {
     var out = { period: null, clock: null, score: null }, now = Date.now();
     if (raw.period) { hist.period.push(raw.period); if (hist.period.length > 5) hist.period.shift(); }
-    if (raw.score) { hist.score.push(raw.score); if (hist.score.length > 3) hist.score.shift(); }
+    if (raw.score) {
+      var sc = repairScore(raw.score), key = raw.score.home + '-' + raw.score.away;
+      if (sc) { scoreJump = null; hist.score.push(sc); if (hist.score.length > 3) hist.score.shift(); }
+      else { // not a continuation: only believe it (a real seek) after several identical readings in a row
+        scoreJump = scoreJump && scoreJump.key === key ? { key: key, n: scoreJump.n + 1 } : { key: key, n: 1 };
+        if (scoreJump.n >= 4) { hist.score = [raw.score, raw.score, raw.score]; sentScore = null; scoreJump = null; }
+      }
+    }
     if (hist.period.length) { sentPeriod = modeOf(hist.period, function (v) { return v.q; }, sentPeriod); out.period = sentPeriod; }
     if (hist.score.length) { sentScore = modeOf(hist.score, function (v) { return v.home + '-' + v.away; }, sentScore); out.score = sentScore; }
     if (raw.clock) {
-      var sec = raw.clock.min * 60 + raw.clock.sec;
+      var c = repairClock(raw.clock), sec = c.min * 60 + c.sec;
       var ok = lastClock === null || Math.abs(sec - lastClock) <= (now - lastClockAt) / 1000 * 2 + 4;
-      if (!ok && pendingClock !== null && Math.abs(sec - pendingClock) <= 3) ok = true; // two consistent readings in a row: a real jump (seek)
-      if (ok) { lastClock = sec; lastClockAt = now; pendingClock = null; out.clock = raw.clock; }
-      else pendingClock = sec;
+      if (ok) { lastClock = sec; lastClockAt = now; pendingClock = null; pendingClockN = 0; out.clock = c; }
+      else if (pendingClock !== null && Math.abs(sec - pendingClock) <= 3) { // a real jump (seek) keeps reading consistently
+        pendingClock = sec;
+        if (++pendingClockN >= 3) { lastClock = sec; lastClockAt = now; pendingClock = null; pendingClockN = 0; out.clock = c; }
+      } else { pendingClock = sec; pendingClockN = 1; }
     }
     return out;
   }
   function liveText(name, v) {
     if (!v) return '-';
     return name === 'period' ? (v.q === 'OT' ? 'OT' : v.q + 'Q') : name === 'clock' ? v.min + ':' + String(v.sec).padStart(2, '0') : v.home + ' - ' + v.away;
+  }
+
+  function parseFor(name, text) { return name === 'period' ? parsePeriod(text) : name === 'clock' ? parseClock(text) : parseScore(text); }
+  // read at the chosen magnification; if the engine is unsure, look again at other magnifications and let the readings vote
+  async function readBest(name) {
+    var base = +$('scale').value, scales = [base, 3, 5].filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var cands = [], first = null;
+    for (var i = 0; i < scales.length; i++) {
+      var res = await readRegion(name, scales[i]);
+      if (!res) return { res: null, parsed: null };
+      if (!first) first = res;
+      var parsed = parseFor(name, res.text);
+      if (parsed) cands.push({ res: res, parsed: parsed, key: JSON.stringify(parsed) });
+      if (parsed && res.conf >= 70) break;
+      var agree = cands.filter(function (c) { return c.key === JSON.stringify(parsed); });
+      if (parsed && agree.length >= 2) break;
+    }
+    if (!cands.length) return { res: first, parsed: null };
+    var score = {};
+    cands.forEach(function (c) { var o = score[c.key] || (score[c.key] = { n: 0, conf: 0, c: c }); o.n++; o.conf += c.res.conf; if (c.res.conf > o.c.res.conf) o.c = c; });
+    var pick = Object.keys(score).map(function (k) { return score[k]; }).sort(function (a, b) { return b.n - a.n || b.conf - a.conf; })[0];
+    return { res: pick.c.res, parsed: pick.c.parsed };
   }
 
   async function tick(force) {
@@ -690,13 +759,7 @@
       var line = new Date().toTimeString().slice(0, 8);
       var readings = {};
       for (var name of NAMES) {
-        var res = await readRegion(name);
-        var parsed = res ? (name === 'period' ? parsePeriod(res.text) : name === 'clock' ? parseClock(res.text) : parseScore(res.text)) : null;
-        if (res && !parsed) { // one more try at a different magnification before giving up on this tick
-          var alt = await readRegion(name, +$('scale').value === 6 ? 3 : 6);
-          var altParsed = alt ? (name === 'period' ? parsePeriod(alt.text) : name === 'clock' ? parseClock(alt.text) : parseScore(alt.text)) : null;
-          if (altParsed) { res = alt; parsed = altParsed; }
-        }
+        var best = await readBest(name), res = best.res, parsed = best.parsed;
         readings[name] = parsed;
         if (res) { stats[name].total++; if (parsed) stats[name].ok++; }
         show(name, res, parsed);
