@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-01 22:17</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-01 22:24</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -486,7 +486,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <li>「チーム名・背番号」に、ホーム/アウェイのチーム名・チーム記号(1文字)と選手の背番号を登録します(最初に一度だけ)。</li>
         <li>「ログ修正」「ログ挿入」「ログ削除」から、今回やりたいことを選びます。</li>
         <li>(Apps Script版のみ)「試合を読み込む」にYahoo!スポーツの試合URLか試合IDを入力して「読み込む」を押すと、その試合の全プレーが読み込まれます。クォーターを開いて該当プレーを押すだけで自動入力できます。</li>
-        <li>(Apps Script版のみ・試験機能)「映像に追従する」を開き、YouTubeのURLを埋め込んで読み取りを開始すると、映像のピリオド・時計・スコアを読み取って、プレー一覧が自動で追従します。囲む範囲は最初の1回だけ指定すれば、このブラウザに保存されます。</li>
+        <li>(Apps Script版のみ・試験機能)「映像に追従する」→「読み取りウィンドウを開く」で別ウィンドウが開きます。そこでYouTubeを埋め込み、ピリオド・時計・スコアを囲むと、読み取った内容に合わせてプレー一覧が自動で追従します。囲む範囲は最初の1回だけ指定すれば、このブラウザに保存されます。</li>
         <li>試合の読み込みを使わない場合は「手動で貼り付ける場合はこちら」を開き、FLSのACTION LOGなどから対象プレーの行をコピーして貼り付け、「貼り付けた内容から自動入力」を押すと、プレーの種類・チーム・選手・クロックなどを自動入力できます(「ログ修正」「ログ挿入」「ログ削除」どれでも使えます。読み取れなかった項目や間違っている項目は、そのまま手動で直せます)。</li>
         <li>ピリオドと試合クロックを、映像で確認した時間に合わせます。</li>
         <li>プレーの種類や選手など、必要な項目を選びます(不要な項目は自動で隠れます)。</li>
@@ -566,32 +566,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="row" style="margin-top:10px;">
           <button class="theme-toggle" id="followToggle" type="button">映像に追従する(試験機能)</button>
           <div class="foldable collapsed" id="followBody" style="margin-top:10px;">
-            <p class="section-sub" style="margin:0 0 8px;">YouTubeを埋め込み、映像の「ピリオド・時計・スコア」を読み取って、プレー一覧を自動で追従させます。映像は外に送信されません。</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input type="text" id="followYtUrl" placeholder="YouTubeのURL" style="flex:1;min-width:180px;">
-              <button class="theme-toggle" id="followYtEmbed" type="button">埋め込む</button>
-            </div>
-            <div id="followPlayerWrap" style="display:none;margin-top:8px;">
-              <iframe id="followYtFrame" style="width:100%;aspect-ratio:16/9;border:0;border-radius:8px;background:#000;display:block;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-              <button class="theme-toggle" id="followCaptureTab" type="button" disabled>この動画の読み取りを開始</button>
-              <button class="theme-toggle" id="followCaptureWindow" type="button">別ウィンドウを共有して開始</button>
-              <button class="theme-toggle" id="followStop" type="button" disabled>停止</button>
-            </div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:12.5px;">
-              <span>囲む範囲(最初の1回だけ):</span>
-              <label style="margin:0;"><input type="radio" name="followReg" value="period" checked> ピリオド</label>
-              <label style="margin:0;"><input type="radio" name="followReg" value="clock"> 時計</label>
-              <label style="margin:0;"><input type="radio" name="followReg" value="score"> スコア</label>
-              <button class="theme-toggle" id="followClearRegions" type="button">範囲をリセット</button>
-              <button class="theme-toggle" id="followCopyRegions" type="button">範囲の設定をコピー</button>
-            </div>
-            <canvas id="followView" width="640" height="360" style="width:100%;height:auto;margin-top:8px;border-radius:8px;background:#111;cursor:crosshair;display:block;"></canvas>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12.5px;">
-              <label style="margin:0;"><input type="checkbox" id="followAuto" checked> 読み取って追従する</label>
-              <label style="margin:0;"><input type="checkbox" id="followInv" checked> 明るい文字を黒に反転</label>
-              <label style="margin:0;">拡大率 <select id="followScale" style="width:auto;display:inline-block;"><option>2</option><option selected>4</option><option>6</option></select></label>
+            <p class="section-sub" style="margin:0 0 8px;">映像のピリオド・時計・スコアを別ウィンドウで読み取り、その結果に合わせてこの一覧が自動で動きます。映像は外に送信されません。</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <button class="theme-toggle" id="followOpenReader" type="button">読み取りウィンドウを開く</button>
+              <label style="margin:0;font-size:12.5px;"><input type="checkbox" id="followAuto" checked> 追従する</label>
             </div>
             <p class="section-sub" id="followStatus" style="margin-top:8px;min-height:1.4em;"></p>
           </div>
@@ -3356,24 +3334,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
 
     // ===== 映像に追従(試験機能) =====
+    // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
+    // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [];
-    var FOLLOW_REG_KEY = 'fls_follow_regions', FOLLOW_YT_KEY = 'fls_follow_yt_url';
-    var FOLLOW_NAMES = ['period', 'clock', 'score'];
-    var FOLLOW_LABELS = { period: 'ピリオド', clock: '時計', score: 'スコア' };
-    var FOLLOW_COLORS = { period: '#f08c00', clock: '#ff4d4f', score: '#2f9e44' };
-    var followRegions = { period: null, clock: null, score: null };
-    try {
-      var savedFollowRegions = JSON.parse(localStorage.getItem(FOLLOW_REG_KEY) || 'null');
-      if (savedFollowRegions) followRegions = savedFollowRegions;
-    } catch (e) {}
-    var followStream = null, followTimer = null, followPreviewTimer = null;
-    var followBusy = false, followWorker = null, followTessPromise = null;
-    var followPending = null, followNowRow = null, followDrag = null;
-    var followVideo = document.createElement('video');
-    followVideo.muted = true;
-    followVideo.playsInline = true;
-    var followView = document.getElementById('followView');
-    var followCtx = followView.getContext('2d');
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html';
+    var followReaderWin = null, followPending = null, followNowRow = null;
 
     // <follow-logic>
     function followRemainingSeconds(t) {
@@ -3444,141 +3409,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // </follow-logic>
 
     function followSetStatus(t) { document.getElementById('followStatus').textContent = t; }
-    function followActiveRegion() { return document.querySelector('input[name=followReg]:checked').value; }
-    function followSaveRegions() { try { localStorage.setItem(FOLLOW_REG_KEY, JSON.stringify(followRegions)); } catch (e) {} }
-
-    function followRender() {
-      var w = followVideo.videoWidth, h = followVideo.videoHeight;
-      if (!w || !h) return;
-      if (followView.width !== w || followView.height !== h) { followView.width = w; followView.height = h; }
-      followCtx.drawImage(followVideo, 0, 0, w, h);
-      FOLLOW_NAMES.forEach(function (name) {
-        var r = followRegions[name];
-        if (!r) return;
-        followCtx.lineWidth = Math.max(2, w / 500);
-        followCtx.strokeStyle = FOLLOW_COLORS[name];
-        followCtx.strokeRect(r.x * w, r.y * h, r.w * w, r.h * h);
-        followCtx.fillStyle = FOLLOW_COLORS[name];
-        followCtx.font = Math.max(14, w / 55) + 'px sans-serif';
-        followCtx.fillText(FOLLOW_LABELS[name], r.x * w, Math.max(14, r.y * h - 4));
-      });
-      if (followDrag) {
-        followCtx.setLineDash([8, 6]);
-        followCtx.strokeStyle = FOLLOW_COLORS[followActiveRegion()];
-        followCtx.strokeRect(followDrag.x0, followDrag.y0, followDrag.x1 - followDrag.x0, followDrag.y1 - followDrag.y0);
-        followCtx.setLineDash([]);
-      }
-    }
-    function followPoint(e) {
-      var rect = followView.getBoundingClientRect();
-      return { x: (e.clientX - rect.left) * followView.width / rect.width, y: (e.clientY - rect.top) * followView.height / rect.height };
-    }
-    followView.addEventListener('mousedown', function (e) {
-      if (!followStream) return;
-      var p = followPoint(e);
-      followDrag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
-    });
-    followView.addEventListener('mousemove', function (e) {
-      if (!followDrag) return;
-      var p = followPoint(e);
-      followDrag.x1 = p.x; followDrag.y1 = p.y;
-      followRender();
-    });
-    window.addEventListener('mouseup', function () {
-      if (!followDrag) return;
-      var d = followDrag; followDrag = null;
-      var x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1), w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
-      if (w > 6 && h > 6) {
-        followRegions[followActiveRegion()] = { x: x / followView.width, y: y / followView.height, w: w / followView.width, h: h / followView.height };
-        followSaveRegions();
-      }
-      followRender();
-    });
-    document.getElementById('followClearRegions').addEventListener('click', function () {
-      followRegions = { period: null, clock: null, score: null };
-      followSaveRegions();
-      followRender();
-    });
-    document.getElementById('followCopyRegions').addEventListener('click', function () {
-      copyText(JSON.stringify(followRegions), document.getElementById('followCopyRegions'));
-    });
-
-    function followLoadTesseract() {
-      if (window.Tesseract) return Promise.resolve();
-      if (followTessPromise) return followTessPromise;
-      followTessPromise = new Promise(function (resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-        s.onload = resolve;
-        s.onerror = function () { followTessPromise = null; reject(new Error('OCRエンジンを読み込めませんでした')); };
-        document.head.appendChild(s);
-      });
-      return followTessPromise;
-    }
-    async function followEnsureWorker() {
-      if (followWorker) return followWorker;
-      followSetStatus('OCRエンジンを読み込み中…(初回のみ数十秒かかることがあります)');
-      await followLoadTesseract();
-      followWorker = await Tesseract.createWorker('eng');
-      return followWorker;
-    }
-
-    function followOtsu(hist, total) {
-      var sum = 0, i;
-      for (i = 0; i < 256; i++) sum += i * hist[i];
-      var sumB = 0, wB = 0, best = 0, thr = 128;
-      for (i = 0; i < 256; i++) {
-        wB += hist[i];
-        if (!wB) continue;
-        var wF = total - wB;
-        if (!wF) break;
-        sumB += i * hist[i];
-        var mB = sumB / wB, mF = (sum - sumB) / wF;
-        var between = wB * wF * (mB - mF) * (mB - mF);
-        if (between > best) { best = between; thr = i; }
-      }
-      return thr;
-    }
-    function followPreprocess(name) {
-      var r = followRegions[name], w = followVideo.videoWidth, h = followVideo.videoHeight;
-      if (!r || !w || !h) return null;
-      var scale = +document.getElementById('followScale').value, pad = 14;
-      var c1 = document.createElement('canvas');
-      c1.width = Math.max(1, Math.round(r.w * w * scale));
-      c1.height = Math.max(1, Math.round(r.h * h * scale));
-      var x1 = c1.getContext('2d', { willReadFrequently: true });
-      x1.imageSmoothingQuality = 'high';
-      x1.drawImage(followVideo, r.x * w, r.y * h, r.w * w, r.h * h, 0, 0, c1.width, c1.height);
-      var img = x1.getImageData(0, 0, c1.width, c1.height), d = img.data;
-      var hist = new Array(256).fill(0), gray = new Uint8Array(c1.width * c1.height), i, p;
-      for (i = 0, p = 0; i < d.length; i += 4, p++) {
-        var g = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-        gray[p] = g; hist[g]++;
-      }
-      var thr = followOtsu(hist, gray.length), inv = document.getElementById('followInv').checked;
-      for (i = 0, p = 0; i < d.length; i += 4, p++) {
-        var bright = gray[p] > thr, v = inv ? (bright ? 0 : 255) : (bright ? 255 : 0);
-        d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
-      }
-      x1.putImageData(img, 0, 0);
-      var c2 = document.createElement('canvas');
-      c2.width = c1.width + pad * 2; c2.height = c1.height + pad * 2;
-      var x2 = c2.getContext('2d');
-      x2.fillStyle = '#fff'; x2.fillRect(0, 0, c2.width, c2.height);
-      x2.drawImage(c1, pad, pad);
-      return c2;
-    }
-    async function followRead(name) {
-      var canvas = followPreprocess(name);
-      if (!canvas) return null;
-      var wk = await followEnsureWorker();
-      await wk.setParameters({
-        tessedit_char_whitelist: name === 'period' ? '0123456789stndrhOT ' : (name === 'clock' ? '0123456789:. ' : '0123456789 '),
-        tessedit_pageseg_mode: '7'
-      });
-      var ret = await wk.recognize(canvas);
-      return ret.data.text.replace(/\s+/g, ' ').trim();
-    }
 
     function followApplyIdx(idx) {
       var f = followFlat[idx];
@@ -3594,118 +3424,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       list.scrollTop = Math.max(0, row.offsetTop - list.clientHeight / 2 + row.offsetHeight / 2);
     }
 
-    async function followTick() {
-      if (followBusy || !followStream) return;
+    function followHandleReading(d) {
+      if (!document.getElementById('followAuto').checked) return;
       if (!followFlat.length) { followSetStatus('先に上の「読み込む」で試合を読み込んでください。'); return; }
-      followBusy = true;
-      try {
-        followRender();
-        var raw = {};
-        for (var name of FOLLOW_NAMES) raw[name] = await followRead(name);
-        var q = raw.period != null ? followParsePeriod(raw.period) : null;
-        var rd = {
-          qi: q != null ? followQuarterIndex(q, gameQuartersData.length) : null,
-          sec: raw.clock != null ? followParseClock(raw.clock) : null,
-          score: raw.score != null ? followParseScore(raw.score) : null
-        };
-        var reading = (q != null ? (q === 'OT' ? 'OT' : q + 'Q') : '?') + ' ' +
-          (rd.sec != null ? Math.floor(rd.sec / 60) + ':' + String(rd.sec % 60).padStart(2, '0') : '?') + ' / ' +
-          (rd.score ? rd.score[0] + '-' + rd.score[1] : '?');
-        var idx = followLocate(followFlat, rd);
-        if (idx == null) {
-          followPending = null;
-          followSetStatus('読み取り: ' + reading + '(位置を特定できませんでした)');
-        } else {
-          var f = followFlat[idx];
-          var p = gameQuartersData[f.qi].plays[f.pi];
-          if (idx === followPending) followApplyIdx(idx);
-          followPending = idx;
-          followSetStatus('読み取り: ' + reading + ' → ' + p.time.replace('残り', '') + ' ' + p.team + ' ' + p.desc);
-        }
-      } catch (e) {
-        followSetStatus('エラー: ' + e.message);
-      } finally {
-        followBusy = false;
+      var q = (d.q === 'OT' || typeof d.q === 'number') ? d.q : null;
+      var sec = typeof d.sec === 'number' && isFinite(d.sec) ? d.sec : null;
+      var score = Array.isArray(d.score) && d.score.length === 2 && typeof d.score[0] === 'number' && typeof d.score[1] === 'number' ? d.score : null;
+      var rd = { qi: q != null ? followQuarterIndex(q, gameQuartersData.length) : null, sec: sec, score: score };
+      var reading = (q != null ? (q === 'OT' ? 'OT' : q + 'Q') : '?') + ' ' +
+        (sec != null ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '?') + ' / ' +
+        (score ? score[0] + '-' + score[1] : '?');
+      var idx = followLocate(followFlat, rd);
+      if (idx == null) {
+        followPending = null;
+        followSetStatus('読み取り: ' + reading + '(位置を特定できませんでした)');
+        return;
       }
+      var f = followFlat[idx], p = gameQuartersData[f.qi].plays[f.pi];
+      if (idx === followPending) followApplyIdx(idx); // move only after two identical readings in a row
+      followPending = idx;
+      followSetStatus('読み取り: ' + reading + ' → ' + p.time.replace('残り', '') + ' ' + p.team + ' ' + p.desc);
     }
 
-    function followApplyTimer() {
-      clearInterval(followTimer);
-      if (followStream && document.getElementById('followAuto').checked) followTimer = setInterval(followTick, 1000);
-    }
-    function followStop() {
-      if (followStream) followStream.getTracks().forEach(function (t) { t.stop(); });
-      followStream = null;
-      clearInterval(followTimer);
-      clearInterval(followPreviewTimer);
-      document.getElementById('followStop').disabled = true;
-      document.getElementById('followCaptureWindow').disabled = false;
-      document.getElementById('followCaptureTab').disabled = !document.getElementById('followYtFrame').src;
-      followSetStatus('読み取りを停止しました');
-    }
-    async function followUseStream(s, label) {
-      followStream = s;
-      followVideo.srcObject = s;
-      await followVideo.play();
-      s.getVideoTracks()[0].addEventListener('ended', followStop);
-      clearInterval(followPreviewTimer);
-      followPreviewTimer = setInterval(followRender, 250);
-      document.getElementById('followStop').disabled = false;
-      document.getElementById('followCaptureTab').disabled = true;
-      document.getElementById('followCaptureWindow').disabled = true;
-      followSetStatus(label + '(' + followVideo.videoWidth + '×' + followVideo.videoHeight + ')。囲む範囲を指定してください。');
-      followApplyTimer();
-    }
-    function followDescribeError(e) {
-      var msg = (e && (e.name + ': ' + e.message)) || String(e);
-      return /permission|policy|disallowed|not allowed/i.test(msg) && !/denied|dismissed/i.test(msg)
-        ? '画面共有がこの環境でブロックされています(' + msg + ')'
-        : '画面共有を開始できませんでした(' + msg + ')';
-    }
-    document.getElementById('followCaptureWindow').addEventListener('click', async function () {
-      try {
-        await followUseStream(await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false }), '画面共有中');
-      } catch (e) { followSetStatus(followDescribeError(e)); }
+    window.addEventListener('message', function (e) {
+      var d = e.data;
+      if (!d || !followReaderWin || e.source !== followReaderWin || e.origin !== new URL(FOLLOW_READER_URL).origin) return;
+      if (d.type === 'fls-follow-hello') { followSetStatus('読み取りウィンドウと接続しました。映像のピリオド・時計・スコアを囲んでください。'); return; }
+      if (d.type === 'fls-follow') followHandleReading(d);
     });
-    document.getElementById('followCaptureTab').addEventListener('click', async function () {
-      var s;
-      try {
-        s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
-      } catch (e) { followSetStatus(followDescribeError(e)); return; }
-      var cropped = false;
-      try {
-        if (window.CropTarget && s.getVideoTracks()[0].cropTo) {
-          await s.getVideoTracks()[0].cropTo(await CropTarget.fromElement(document.getElementById('followYtFrame')));
-          cropped = true;
-        }
-      } catch (e) { /* cropping unavailable here; the whole shared tab is used instead */ }
-      try {
-        await followUseStream(s, cropped ? '動画部分だけを取得中' : 'タブ全体を取得中(動画部分だけには絞れませんでした)');
-      } catch (e) { followSetStatus(followDescribeError(e)); }
-    });
-    document.getElementById('followStop').addEventListener('click', followStop);
-    document.getElementById('followAuto').addEventListener('change', followApplyTimer);
 
-    function followYoutubeId(url) {
-      var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/live\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(url);
-      return m ? m[1] : null;
-    }
-    function followYoutubeStart(url) {
-      var m = /[?&#]t=(?:(\d+)h)?(?:(\d+)m)?(\d+)s?/.exec(url);
-      return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0;
-    }
-    document.getElementById('followYtEmbed').addEventListener('click', function () {
-      var url = document.getElementById('followYtUrl').value.trim();
-      var id = followYoutubeId(url);
-      if (!id) { followSetStatus('YouTubeのURLを認識できませんでした'); return; }
-      var start = followYoutubeStart(url);
-      document.getElementById('followYtFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '');
-      document.getElementById('followPlayerWrap').style.display = '';
-      document.getElementById('followCaptureTab').disabled = !!followStream;
-      try { localStorage.setItem(FOLLOW_YT_KEY, url); } catch (e) {}
-      followSetStatus('埋め込みました。再生できない場合は、動画が埋め込みを許可していません(その場合は「別ウィンドウを共有して開始」を使ってください)。');
+    document.getElementById('followOpenReader').addEventListener('click', function () {
+      followReaderWin = window.open(FOLLOW_READER_URL, 'fls-follow-reader', 'popup,width=1100,height=860');
+      followSetStatus(followReaderWin
+        ? '読み取りウィンドウを開きました。そこでYouTubeを埋め込み、囲む範囲を指定してください。'
+        : 'ウィンドウを開けませんでした。ポップアップのブロックを解除してください。');
     });
-    try { document.getElementById('followYtUrl').value = localStorage.getItem(FOLLOW_YT_KEY) || ''; } catch (e) {}
 
     document.getElementById('followToggle').addEventListener('click', function () {
       var collapsed = document.getElementById('followBody').classList.toggle('collapsed');
