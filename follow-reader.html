@@ -6,7 +6,7 @@
 <title>映像読み取りウィンドウ</title>
 <style>
   body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; margin: 0; padding: 16px; background: #f4f5f7; color: #1d2129; }
-  h1 { font-size: 18px; margin: 0 0 6px; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
   p.note { font-size: 13px; color: #555; margin: 4px 0 12px; line-height: 1.6; }
   .bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 10px; font-size: 13px; }
   button { font: inherit; padding: 6px 12px; border: 1px solid #b8bec9; border-radius: 8px; background: #fff; cursor: pointer; }
@@ -23,8 +23,9 @@
   #status { font-size: 13px; color: #3b5bdb; min-height: 1.4em; }
   pre { background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 10px; font-size: 12px; max-height: 240px; overflow: auto; margin-top: 12px; }
   label { white-space: nowrap; }
-  body { padding: 10px 14px; }
-  details.fold { margin: 0 0 8px; }
+  body { padding: 8px 14px; }
+  .folds { display: flex; gap: 4px 22px; flex-wrap: wrap; align-items: flex-start; }
+  details.fold { margin: 0 0 4px; }
   details.fold > summary { cursor: pointer; font-size: 12px; color: #555; padding: 2px 0; }
   .main { display: block; }
   #playerWrap { display: none; position: sticky; top: 0; z-index: 10; background: #f4f5f7; padding-bottom: 4px; max-width: calc((100vh - 300px) * 16 / 9); min-width: 320px; }
@@ -44,8 +45,9 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01i(読み取り安定化)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02a(動画を最大化)</span></h1>
 
+<div class="folds">
 <details class="fold">
   <summary>使い方</summary>
   <p class="note">
@@ -69,6 +71,7 @@
     <label><input type="checkbox" id="auto" checked> 自動で読み取る</label>
   </div>
 </details>
+</div>
 
 <div class="main">
   <div id="playerWrap">
@@ -375,6 +378,21 @@
     ytAction(a);
   });
   // clicking the video moves keyboard focus into the iframe, where our keys would be lost: take it back
+  // make the video as large as the window allows (everything under it stays on screen)
+  function fitPlayer() {
+    var wrap = $('playerWrap'), main = wrap.parentNode;
+    if (wrap.style.display !== 'block') return;
+    var rest = wrap.offsetHeight - $('ytBox').offsetHeight + $('readout').offsetHeight + 8;
+    var top = main.getBoundingClientRect().top + window.scrollY;
+    var maxH = window.innerHeight - top - rest - 10;
+    var w = Math.max(320, Math.min(main.clientWidth, Math.floor(maxH * 16 / 9)));
+    if (Math.abs(w - wrap.offsetWidth) > 6 || wrap.style.maxWidth === '') {
+      wrap.style.maxWidth = w + 'px'; $('readout').style.maxWidth = w + 'px';
+    }
+  }
+  window.addEventListener('resize', fitPlayer);
+  document.addEventListener('toggle', fitPlayer, true);
+  setInterval(fitPlayer, 700);
   setInterval(function () { if (document.activeElement === $('ytFrame')) { $('ytFrame').blur(); window.focus(); } }, 300);
 
   $('captureThisTab').addEventListener('click', async function () {

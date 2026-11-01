@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-01 23:48</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 00:04</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3337,7 +3337,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [];
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261101i'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null;
 
     // <follow-logic>
@@ -3389,7 +3389,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (flat[i].rem != null && flat[i].rem >= rd.sec) best = i;
       }
       if (firstInQuarter < 0) return anchor >= 0 ? withoutScore() : null; // period and score disagree
-      return best >= 0 ? best : firstInQuarter;
+      if (best < 0) return firstInQuarter;
+      // Once the clock has moved past that play's second, point at the next play (the one to look at next).
+      if (flat[best].rem > rd.sec && best + 1 < flat.length && flat[best + 1].qi === qi) return best + 1;
+      return best;
     }
     function followParsePeriod(t) {
       var m = /^\s*(\d)\s*(?:[a-z]{0,2})\s*$/i.exec(t);
