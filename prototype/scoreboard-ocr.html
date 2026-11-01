@@ -28,11 +28,22 @@
 <body>
 <h1>スコアボード読み取り試作</h1>
 <p class="note">
-  1. 「画面共有を開始」で、映像を再生しているウィンドウ(またはタブ)を選びます。<br>
+  1. 下の欄に<b>YouTubeのURLを貼って「埋め込む」</b>を押し、動画を再生できる状態にします。次に「<b>このタブの動画部分を読み取り対象にする</b>」を押し、共有ダイアログで<b>このタブ</b>を選びます。<br>
+  　(別ウィンドウの映像を使いたい場合は、「画面共有を開始」でそのウィンドウを選んでも構いません。)<br>
   2. 「ピリオド」を選んだ状態で、プレビュー上でピリオド(例: <b>1st</b>)を<b>ドラッグして囲み</b>ます。同じように「時計」(例: <b>5:21</b>)と「スコア」(両チームの数字)も囲みます。数字だけをぴったり囲むほうが、読み取りが安定します。<br>
   3. 「1回読み取る」か「自動で読み取る」で、読み取り結果を確認します。うまく読めないときは、しきい値・反転・拡大率を変えて試してください。<br>
   ※ 映像は外に送信されません(ブラウザの中だけで処理します)。
 </p>
+
+<div class="bar">
+  <input type="text" id="ytUrl" placeholder="YouTubeのURLを貼り付け(例: https://www.youtube.com/watch?v=...)" style="flex:1;min-width:260px;padding:6px 8px;border:1px solid #b8bec9;border-radius:8px;font:inherit;">
+  <button id="ytEmbed">埋め込む</button>
+  <button id="captureThisTab" class="primary" disabled>このタブの動画部分を読み取り対象にする</button>
+</div>
+<div id="playerWrap" style="display:none;margin-bottom:12px;">
+  <iframe id="ytFrame" style="width:100%;max-width:1280px;aspect-ratio:16/9;border:0;border-radius:8px;background:#000;display:block;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+
 
 <div class="bar">
   <button id="startCapture" class="primary">画面共有を開始</button>
@@ -195,20 +206,64 @@
     setStatus('画面共有を停止しました');
   }
   $('stopCapture').addEventListener('click', stopCapture);
-  $('startCapture').addEventListener('click', async function () {
-    try {
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
-    } catch (e) {
-      setStatus('画面共有を開始できませんでした: ' + e.message);
-      return;
-    }
+
+  async function useStream(s, label) {
+    stream = s;
     video.srcObject = stream;
     await video.play();
     stream.getVideoTracks()[0].addEventListener('ended', stopCapture);
     source = { kind: 'video', el: video };
+    clearInterval(previewTimer);
     previewTimer = setInterval(renderView, 250);
     $('startCapture').disabled = true; $('stopCapture').disabled = false;
-    setStatus('画面共有中: ' + video.videoWidth + '×' + video.videoHeight);
+    setStatus(label + ': ' + video.videoWidth + '×' + video.videoHeight);
+  }
+
+  $('startCapture').addEventListener('click', async function () {
+    try {
+      await useStream(await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false }), '画面共有中');
+    } catch (e) {
+      setStatus('画面共有を開始できませんでした: ' + e.message);
+    }
+  });
+
+  // ---- YouTube embed + capture of just the player area ----
+  function youtubeId(url) {
+    var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/live\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(url);
+    return m ? m[1] : null;
+  }
+  function youtubeStart(url) {
+    var m = /[?&#]t=(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?/.exec(url);
+    return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0;
+  }
+  $('ytEmbed').addEventListener('click', function () {
+    var url = $('ytUrl').value.trim();
+    var id = youtubeId(url);
+    if (!id) { setStatus('YouTubeのURLを認識できませんでした'); return; }
+    var start = youtubeStart(url);
+    $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&origin=' + encodeURIComponent(location.origin);
+    $('playerWrap').style.display = '';
+    $('captureThisTab').disabled = false;
+    setStatus('埋め込みました。再生できない場合は、動画の持ち主が埋め込みを許可していません。');
+  });
+
+  $('captureThisTab').addEventListener('click', async function () {
+    var s;
+    try {
+      s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
+    } catch (e) {
+      setStatus('画面共有を開始できませんでした: ' + e.message);
+      return;
+    }
+    var cropped = false;
+    try {
+      if (window.CropTarget && s.getVideoTracks()[0].cropTo) {
+        var target = await CropTarget.fromElement($('ytFrame'));
+        await s.getVideoTracks()[0].cropTo(target);
+        cropped = true;
+      }
+    } catch (e) { /* not the current tab, or unsupported: fall back to the whole shared surface */ }
+    await useStream(s, cropped ? '動画部分だけを取得中' : 'タブ全体を取得中(動画部分だけに絞れませんでした)');
   });
 
   // ---- preprocessing ----
