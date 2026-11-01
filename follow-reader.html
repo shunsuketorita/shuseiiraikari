@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01b(動画固定)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01c(範囲コピー)</span></h1>
 <p class="note">
   本体アプリの「映像に追従する」から開いたウィンドウです。読み取った<b>ピリオド・時計・スコア</b>が本体に送られ、プレー一覧が映像に合わせて動きます。<br>
   1. 下にYouTubeのURLを貼って「埋め込む」→「このタブの動画部分を読み取り対象にする」→ 共有ダイアログで<b>このタブ</b>を選びます。(別ウィンドウの映像を使う場合は「画面共有を開始」。)<br>
@@ -56,6 +56,7 @@
   <label><input type="radio" name="reg" value="clock"> 時計(5:21 など)</label>
   <label><input type="radio" name="reg" value="score"> スコア(両チーム分)</label>
   <button id="clearRegions">領域をリセット</button>
+  <button id="copyRegions">範囲の設定をコピー</button>
 </div>
 
 <div class="bar">
@@ -179,6 +180,12 @@
     renderView();
   });
 
+  $('copyRegions').addEventListener('click', function () {
+    var text = JSON.stringify(regions);
+    var done = function () { setStatus('範囲の設定をコピーしました: ' + text); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { setStatus('コピーできませんでした: ' + text); });
+    else setStatus('コピーできませんでした: ' + text);
+  });
   $('clearRegions').addEventListener('click', function () {
     regions = { period: null, clock: null, score: null };
     stats = { period: { ok: 0, total: 0 }, clock: { ok: 0, total: 0 }, score: { ok: 0, total: 0 } };
