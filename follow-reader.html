@@ -44,7 +44,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01h(時計の読み取り改善)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01i(読み取り安定化)</span></h1>
 
 <details class="fold">
   <summary>使い方</summary>
@@ -154,9 +154,9 @@
   var REG_KEY = 'fls_reader_regions_v3'; // 自分で囲み直した範囲だけを保存する(なければ DEFAULT_REGIONS)
   // 動画(16:9)に対する割合。B.LEAGUE配信のスコアボード位置で固定。
   var DEFAULT_REGIONS = {
-    period: { x: 0.645, y: 0.882, w: 0.040, h: 0.058 },
-    clock: { x: 0.697, y: 0.882, w: 0.054, h: 0.058 },
-    score: { x: 0.446, y: 0.882, w: 0.102, h: 0.058 },
+    period: { x: 0.640, y: 0.882, w: 0.048, h: 0.058 },
+    clock: { x: 0.686, y: 0.882, w: 0.064, h: 0.058 },
+    score: { x: 0.440, y: 0.882, w: 0.112, h: 0.058 },
     _aspect: 16 / 9
   };
   function defaultRegions() { return JSON.parse(JSON.stringify(DEFAULT_REGIONS)); }
@@ -493,7 +493,6 @@
   var LIVE_IDS = { period: 'liveP', clock: 'liveC', score: 'liveS' };
   function show(name, res, parsed) {
     showDetail(name, res, parsed);
-    $(LIVE_IDS[name]).textContent = res && parsed ? $(name + 'Parsed').textContent : '-';
   }
   function showDetail(name, res, parsed) {
     $(name + 'Raw').textContent = res ? '"' + res.text + '"' : '(領域未設定)';
@@ -548,6 +547,34 @@
     return null;
   }
 
+  // ---- smoothing: a single misread (e.g. 9:42 read as 3:42, 1st read as 5) must not move the list ----
+  var hist = { period: [], score: [] }, lastClock = null, lastClockAt = 0, pendingClock = null, sentPeriod = null, sentScore = null;
+  function modeOf(arr, keyFn, prev) {
+    var cnt = {}, best = null, bestN = 0;
+    arr.forEach(function (v) { var k = keyFn(v); cnt[k] = (cnt[k] || 0) + 1; });
+    arr.forEach(function (v) { var k = keyFn(v); if (cnt[k] > bestN || (cnt[k] === bestN && prev && keyFn(prev) === k)) { best = v; bestN = cnt[k]; } });
+    return best;
+  }
+  function stabilize(raw) {
+    var out = { period: null, clock: null, score: null }, now = Date.now();
+    if (raw.period) { hist.period.push(raw.period); if (hist.period.length > 5) hist.period.shift(); }
+    if (raw.score) { hist.score.push(raw.score); if (hist.score.length > 3) hist.score.shift(); }
+    if (hist.period.length) { sentPeriod = modeOf(hist.period, function (v) { return v.q; }, sentPeriod); out.period = sentPeriod; }
+    if (hist.score.length) { sentScore = modeOf(hist.score, function (v) { return v.home + '-' + v.away; }, sentScore); out.score = sentScore; }
+    if (raw.clock) {
+      var sec = raw.clock.min * 60 + raw.clock.sec;
+      var ok = lastClock === null || Math.abs(sec - lastClock) <= (now - lastClockAt) / 1000 * 2 + 4;
+      if (!ok && pendingClock !== null && Math.abs(sec - pendingClock) <= 3) ok = true; // two consistent readings in a row: a real jump (seek)
+      if (ok) { lastClock = sec; lastClockAt = now; pendingClock = null; out.clock = raw.clock; }
+      else pendingClock = sec;
+    }
+    return out;
+  }
+  function liveText(name, v) {
+    if (!v) return '-';
+    return name === 'period' ? (v.q === 'OT' ? 'OT' : v.q + 'Q') : name === 'clock' ? v.min + ':' + String(v.sec).padStart(2, '0') : v.home + ' - ' + v.away;
+  }
+
   async function tick() {
     if (busy || !source) return;
     var problem = frameProblem();
@@ -570,7 +597,9 @@
         show(name, res, parsed);
         line += '  ' + LABELS[name] + '="' + (res ? res.text : '-') + '" → ' + (parsed ? JSON.stringify(parsed) : '×');
       }
-      sendToApp(readings);
+      var stable = stabilize(readings);
+      NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = liveText(n, stable[n]); });
+      sendToApp(stable);
       var logEl = $('log');
       logEl.textContent = (logEl.textContent.indexOf('(読み取り') === 0 ? '' : logEl.textContent + '\n') + line;
       var lines = logEl.textContent.split('\n'); if (lines.length > 60) logEl.textContent = lines.slice(-60).join('\n');
