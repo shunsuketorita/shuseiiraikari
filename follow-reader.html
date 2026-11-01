@@ -44,7 +44,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01g(大画面)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01h(時計の読み取り改善)</span></h1>
 
 <details class="fold">
   <summary>使い方</summary>
@@ -415,12 +415,12 @@
     return thr;
   }
 
-  function preprocess(name) {
+  function preprocess(name, scaleOverride) {
     var r = regions[name];
     if (!r || !source) return null;
     var w = srcW(), h = srcH();
     var sx = r.x * w, sy = r.y * h, sw = r.w * w, sh = r.h * h;
-    var scale = +$('scale').value, pad = 14;
+    var scale = scaleOverride || +$('scale').value, pad = 14;
     var c1 = document.createElement('canvas');
     c1.width = Math.max(1, Math.round(sw * scale)); c1.height = Math.max(1, Math.round(sh * scale));
     var x1 = c1.getContext('2d', { willReadFrequently: true });
@@ -457,8 +457,8 @@
     return worker;
   }
 
-  async function readRegion(name) {
-    var pre = preprocess(name);
+  async function readRegion(name, scaleOverride) {
+    var pre = preprocess(name, scaleOverride);
     if (!pre) return null;
     var dest = $(name + 'Proc');
     dest.width = pre.canvas.width; dest.height = pre.canvas.height;
@@ -478,10 +478,12 @@
     return /OT/i.test(t) ? { q: 'OT' } : null;
   }
   function parseClock(t) {
-    var m = /(\d{1,2}):(\d{2})/.exec(t);
-    if (m) return { min: +m[1], sec: +m[2] };
-    m = /(\d{1,2})[.,]\d/.exec(t); // under a minute: 59.8
-    return m ? { min: 0, sec: +m[1] } : null;
+    var sp = t.replace(/\s+/g, ' ').trim();
+    // m:ss — the colon is often read as . , ; ' or dropped, so accept any of those (or none) before exactly two digits
+    var m = /(?:^|\D)(\d{1,2}) ?[:.,;'!|]? ?(\d{2})(?!\d)/.exec(sp);
+    if (m && +m[2] < 60) return { min: +m[1], sec: +m[2] };
+    m = /^\D*(\d{1,2})[.,]\d\D*$/.exec(sp.replace(/ /g, '')); // under a minute: 59.8
+    return m && +m[1] < 60 ? { min: 0, sec: +m[1] } : null;
   }
   function parseScore(t) {
     var n = t.match(/\d+/g);
@@ -558,6 +560,11 @@
       for (var name of NAMES) {
         var res = await readRegion(name);
         var parsed = res ? (name === 'period' ? parsePeriod(res.text) : name === 'clock' ? parseClock(res.text) : parseScore(res.text)) : null;
+        if (res && !parsed) { // one more try at a different magnification before giving up on this tick
+          var alt = await readRegion(name, +$('scale').value === 6 ? 3 : 6);
+          var altParsed = alt ? (name === 'period' ? parsePeriod(alt.text) : name === 'clock' ? parseClock(alt.text) : parseScore(alt.text)) : null;
+          if (altParsed) { res = alt; parsed = altParsed; }
+        }
         readings[name] = parsed;
         if (res) { stats[name].total++; if (parsed) stats[name].ok++; }
         show(name, res, parsed);
