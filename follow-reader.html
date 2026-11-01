@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02a(動画を最大化)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02b(移動・記憶・省電力)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -294,6 +294,11 @@
     }
   });
 
+  // ---- remembered embed (url + position) ----
+  var URL_KEY = 'fls_reader_yt_url', POS_KEY = 'fls_reader_yt_pos';
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
   // ---- YouTube embed + capture of just the player area ----
   function youtubeId(url) {
     var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/live\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(url);
@@ -308,6 +313,10 @@
     var id = youtubeId(url);
     if (!id) { setStatus('YouTubeのURLを認識できませんでした'); return; }
     var start = youtubeStart(url);
+    var savedPos = lsGet(POS_KEY, null);
+    if (!start && savedPos && savedPos.id === id && savedPos.t > 5) start = Math.max(0, Math.floor(savedPos.t) - 2);
+    lsSet(URL_KEY, url);
+    ytTime = start || 0; ytDur = 0; obs = []; cancelSeek();
     $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&controls=0&fs=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&disablekb=1&origin=' + encodeURIComponent(location.origin);
     $('playerWrap').style.display = 'block';
     $('captureThisTab').disabled = false;
@@ -316,7 +325,7 @@
 
   // ---- player controls (YouTube iframe API over postMessage; the embed's own keys are unreliable) ----
   var YT_ORIGIN = 'https://www.youtube.com';
-  var ytTime = 0, ytState = -1, ytDur = 0, ytScrub = false;
+  var ytTime = 0, ytState = -1, ytDur = 0, ytScrub = false, ocrWake = 0, pausedNoted = false;
   function fmtT(t) { t = Math.max(0, Math.floor(t)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
   function ytShowTime() {
     $('ytTimeLbl').textContent = fmtT(ytTime) + ' / ' + fmtT(ytDur);
@@ -346,11 +355,14 @@
   function ytSeekBy(dt) { ytTime = Math.max(0, ytTime + dt); ytCmd('seekTo', [ytTime, true]); ytShowTime(); }
   $('ytSeek').addEventListener('input', function () {
     if (!ytDur) return;
+    cancelSeek(); ocrWake = Date.now() + 2500;
     ytScrub = true; ytTime = ytDur * $('ytSeek').value / 1000; ytCmd('seekTo', [ytTime, true]); ytShowTime();
   });
   $('ytSeek').addEventListener('change', function () { ytScrub = false; });
   $('ytShield').addEventListener('click', function () { ytAction('toggle'); });
   function ytAction(a) {
+    cancelSeek();
+    ocrWake = Date.now() + 2500; // a step/seek/toggle while paused earns one more look
     if (a === 'toggle') { ytCmd(ytState === 1 ? 'pauseVideo' : 'playVideo'); ytState = ytState === 1 ? 2 : 1; return; }
     var m = /^(seek|step):(-?\d+)$/.exec(a);
     if (!m) return;
@@ -565,6 +577,74 @@
     return null;
   }
 
+  // ---- seek the video to a given game time (asked by the app when a play row is clicked) ----
+  var seekJob = null, obs = [];
+  function elapsedOf(q, sec) {
+    if (q === 'OT') return sec <= 300 ? 2400 + (300 - sec) : null;
+    if (typeof q !== 'number' || q < 1 || q > 4 || sec > 600) return null;
+    return (q - 1) * 600 + (600 - sec);
+  }
+  function labelOf(e) {
+    var q = e >= 2400 ? 'OT' : Math.floor(e / 600) + 1, rem = e >= 2400 ? 300 - (e - 2400) : 600 - (e % 600);
+    return (q === 'OT' ? 'OT' : q + 'Q') + ' ' + Math.floor(rem / 60) + ':' + String(Math.max(0, rem % 60)).padStart(2, '0');
+  }
+  function toApp(obj) { var a = appWindow(); if (a) a.postMessage(obj, '*'); }
+  function seekSay(text, done) { setStatus(text); toApp({ type: 'fls-seek-status', text: text, done: !!done }); }
+  function cancelSeek() { if (seekJob) { seekJob = null; seekSay('', true); } }
+  function seekTo(t) {
+    t = Math.max(0, ytDur ? Math.min(ytDur - 2, t) : t);
+    ytTime = t; ytCmd('seekTo', [t, true]); ytShowTime();
+    if (seekJob) seekJob.seekAt = Date.now();
+  }
+  function startSeek(q, sec) {
+    var e = elapsedOf(q, sec);
+    if (e == null) { seekSay('その時間(' + q + ' ' + sec + '秒)には移動できません', true); return; }
+    if (!$('ytFrame').src || !ytDur) { seekSay('動画が埋め込まれていません。読み取りウィンドウで動画を埋め込んでください。', true); return; }
+    if (!source || !cropTab) { seekSay('映像の読み取りが始まっていません。先に「このタブの動画部分を読み取り対象にする」を押してください。', true); return; }
+    seekJob = { e: e, lead: Math.min(3, e >= 2400 ? e - 2400 : e % 600), iter: 0, fails: 0, okCount: 0, lastD: 0, seekAt: 0 };
+    if (ytState !== 1) { ytCmd('playVideo'); ytState = 1; }
+    var best = null;
+    obs.forEach(function (o) { if (!best || Math.abs(o.e - e) < Math.abs(best.e - e)) best = o; });
+    seekSay('映像を探しています… 目標 ' + labelOf(e));
+    if (best && Math.abs(best.e - e) > 6) seekTo(best.t + (e - seekJob.lead - best.e));
+    else seekJob.seekAt = Date.now() - 1500; // read where we are first
+  }
+  function seekStep(raw, tickStart, tickYt) {
+    var job = seekJob;
+    if (!job || tickStart < job.seekAt + 1200) return; // that frame is from before the last jump
+    var eNow = raw.period && raw.clock ? elapsedOf(raw.period.q, raw.clock.min * 60 + raw.clock.sec) : null;
+    if (eNow == null) {
+      if (++job.fails >= 2) { // no scoreboard here (break, replay, or not at the game yet): move on
+        job.fails = 0;
+        job.nudges = (job.nudges || 0) + 1;
+        if (job.lastD) seekTo(tickYt + Math.sign(job.lastD) * Math.min(900, 45 * Math.pow(2, job.nudges - 1))); // grow the step toward the target
+        else { // never saw the scoreboard: guess by proportion, then sweep the whole video
+          var k = job.blind = (job.blind || 0) + 1;
+          seekTo(k === 1 ? ytDur * (0.1 + 0.8 * job.e / 2400) : ytDur * ((k - 1) % 10) / 10 + ytDur * 0.03);
+        }
+        if (job.nudges > 25) { seekJob = null; seekSay('目標の場面を見つけられませんでした(スコアボードが読めない場面が続きました)', true); }
+      }
+      return;
+    }
+    job.fails = 0; job.nudges = 0;
+    var d = (job.e - job.lead) - eNow;
+    job.lastD = d;
+    if (Math.abs(d) <= 3) {
+      if (++job.okCount >= 2) { seekJob = null; seekSay('移動しました: ' + labelOf(eNow) + ' 付近' + (job.lead ? '(目標の約' + job.lead + '秒前)' : ''), true); }
+      return;
+    }
+    job.okCount = 0;
+    if (++job.iter > 15) { seekJob = null; seekSay('目標の場面に合わせきれませんでした(いま ' + labelOf(eNow) + ')', true); return; }
+    seekSay('映像を探しています… いま ' + labelOf(eNow) + ' → 目標 ' + labelOf(job.e) + '(' + job.iter + '回目)');
+    seekTo(tickYt + d);
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.type !== 'fls-seek' || e.source !== window.opener) return;
+    if (!((typeof d.q === 'number' && d.q >= 1 && d.q <= 4) || d.q === 'OT') || typeof d.sec !== 'number' || !isFinite(d.sec)) return;
+    startSeek(d.q, d.sec);
+  });
+
   // ---- smoothing: a single misread (e.g. 9:42 read as 3:42, 1st read as 5) must not move the list ----
   var hist = { period: [], score: [] }, lastClock = null, lastClockAt = 0, pendingClock = null, sentPeriod = null, sentScore = null;
   function modeOf(arr, keyFn, prev) {
@@ -593,8 +673,15 @@
     return name === 'period' ? (v.q === 'OT' ? 'OT' : v.q + 'Q') : name === 'clock' ? v.min + ':' + String(v.sec).padStart(2, '0') : v.home + ' - ' + v.away;
   }
 
-  async function tick() {
+  async function tick(force) {
     if (busy || !source) return;
+    // a paused video does not change and YouTube draws "more videos" over it: skip OCR until something moves
+    if (!force && cropTab && ytState === 2 && !seekJob && Date.now() > ocrWake) {
+      if (!pausedNoted) { pausedNoted = true; setStatus('一時停止中は読み取りを止めています(再生・コマ送り・移動で再開します)'); }
+      return;
+    }
+    pausedNoted = false;
+    var tickStart = Date.now(), tickYt = ytTime;
     var problem = frameProblem();
     if (problem) { setStatus(problem); return; }
     busy = true;
@@ -616,6 +703,11 @@
         line += '  ' + LABELS[name] + '="' + (res ? res.text : '-') + '" → ' + (parsed ? JSON.stringify(parsed) : '×');
       }
       var stable = stabilize(readings);
+      if (stable.period && stable.clock) {
+        var eo = elapsedOf(stable.period.q, stable.clock.min * 60 + stable.clock.sec);
+        if (eo != null) { obs.push({ t: tickYt, e: eo }); if (obs.length > 400) obs.shift(); }
+      }
+      seekStep(readings, tickStart, tickYt);
       NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = liveText(n, stable[n]); });
       sendToApp(stable);
       var logEl = $('log');
@@ -629,7 +721,7 @@
     }
   }
 
-  $('runOnce').addEventListener('click', tick);
+  $('runOnce').addEventListener('click', function () { tick(true); });
   function applyAuto() {
     clearInterval(autoTimer);
     if ($('auto').checked) autoTimer = setInterval(tick, +$('interval').value);
@@ -637,6 +729,12 @@
   $('auto').addEventListener('change', applyAuto);
   $('interval').addEventListener('change', applyAuto);
   applyAuto();
+  var rememberedUrl = lsGet(URL_KEY, '');
+  if (rememberedUrl) { $('ytUrl').value = rememberedUrl; $('ytEmbed').click(); }
+  setInterval(function () {
+    var id = youtubeId($('ytUrl').value);
+    if (id && ytDur > 0 && ytTime > 0 && $('ytFrame').src) lsSet(POS_KEY, { id: id, t: ytTime });
+  }, 5000);
   $('thr').addEventListener('input', function () { $('thrVal').textContent = $('thr').value; });
 })();
 </script>
