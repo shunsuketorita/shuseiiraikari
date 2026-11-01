@@ -26,11 +26,11 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01c(範囲コピー)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01d(範囲固定)</span></h1>
 <p class="note">
   本体アプリの「映像に追従する」から開いたウィンドウです。読み取った<b>ピリオド・時計・スコア</b>が本体に送られ、プレー一覧が映像に合わせて動きます。<br>
   1. 下にYouTubeのURLを貼って「埋め込む」→「このタブの動画部分を読み取り対象にする」→ 共有ダイアログで<b>このタブ</b>を選びます。(別ウィンドウの映像を使う場合は「画面共有を開始」。)<br>
-  2. 動画はウィンドウの上に固定されます(動画が全部見えている状態で囲んでください)。プレビュー上で、ピリオド(例: 1st)・時計(例: 5:21)・スコア(両チームの数字)を、それぞれ<b>数字だけぴったり</b>ドラッグで囲みます。この範囲はこのブラウザに保存されます(最初の1回だけ)。<br>
+  2. 動画はウィンドウの上に固定されます。ピリオド・時計・スコアの読み取り範囲は<b>あらかじめ固定</b>してあるので、囲む操作は要りません。プレビューの色の枠が数字に合っているか確認してください。<br>
   3. 「自動で読み取る」がオンなら、1秒ごとに読み取って本体へ送ります。映像は外部に送信されず、ブラウザの中だけで処理します。
 </p>
 
@@ -50,12 +50,13 @@
   <label>または画像で試す: <input type="file" id="imgFile" accept="image/*"></label>
 </div>
 
-<div class="bar">
+<details style="margin-bottom:10px;"><summary style="cursor:pointer;font-size:13px;color:#555;">範囲・読み取りの調整(通常は不要)</summary>
+<div class="bar" style="margin-top:8px;">
   囲む領域:
   <label><input type="radio" name="reg" value="period" checked> ピリオド(1st など)</label>
   <label><input type="radio" name="reg" value="clock"> 時計(5:21 など)</label>
   <label><input type="radio" name="reg" value="score"> スコア(両チーム分)</label>
-  <button id="clearRegions">領域をリセット</button>
+  <button id="clearRegions">初期の範囲に戻す</button>
   <button id="copyRegions">範囲の設定をコピー</button>
 </div>
 
@@ -66,6 +67,7 @@
   <label>拡大率 <select id="scale"><option>2</option><option selected>4</option><option>6</option></select></label>
   <label>間隔 <select id="interval"><option value="500">0.5秒</option><option value="1000" selected>1秒</option><option value="2000">2秒</option></select></label>
 </div>
+</details>
 
 <div class="bar">
   <button id="runOnce">1回読み取る</button>
@@ -108,7 +110,15 @@
   var $ = function (id) { return document.getElementById(id); };
   var view = $('view'), vctx = view.getContext('2d');
   var video = $('video');
-  var REG_KEY = 'fls_reader_regions_v2';
+  var REG_KEY = 'fls_reader_regions_v3'; // 自分で囲み直した範囲だけを保存する(なければ DEFAULT_REGIONS)
+  // 動画(16:9)に対する割合。B.LEAGUE配信のスコアボード位置で固定。
+  var DEFAULT_REGIONS = {
+    period: { x: 0.645, y: 0.882, w: 0.040, h: 0.058 },
+    clock: { x: 0.697, y: 0.882, w: 0.054, h: 0.058 },
+    score: { x: 0.446, y: 0.882, w: 0.102, h: 0.058 },
+    _aspect: 16 / 9
+  };
+  function defaultRegions() { return JSON.parse(JSON.stringify(DEFAULT_REGIONS)); }
   var NAMES = ['period', 'clock', 'score'];
   var COLORS = { period: '#f08c00', clock: '#ff4d4f', score: '#2f9e44' };
   var LABELS = { period: 'ピリオド', clock: '時計', score: 'スコア' };
@@ -116,7 +126,7 @@
   var source = null;
   var stream = null, previewTimer = null, autoTimer = null;
   var worker = null, busy = false;
-  var regions = { period: null, clock: null, score: null };
+  var regions = defaultRegions();
   var stats = { period: { ok: 0, total: 0 }, clock: { ok: 0, total: 0 }, score: { ok: 0, total: 0 } };
   var dragging = null;
   var cropTab = false;
@@ -187,9 +197,10 @@
     else setStatus('コピーできませんでした: ' + text);
   });
   $('clearRegions').addEventListener('click', function () {
-    regions = { period: null, clock: null, score: null };
+    regions = defaultRegions();
+    try { localStorage.removeItem(REG_KEY); } catch (e) {}
     stats = { period: { ok: 0, total: 0 }, clock: { ok: 0, total: 0 }, score: { ok: 0, total: 0 } };
-    saveRegions(); renderView();
+    renderView();
   });
 
   // ---- image / capture sources ----
@@ -416,7 +427,7 @@
       }
     }
     if (regions._aspect && Math.abs(w / h - regions._aspect) / regions._aspect > 0.03) {
-      return '映像のサイズが、範囲を囲んだときと違います。「領域をリセット」して、動画が全部見える状態で囲み直してください。';
+      return '映像のサイズが、範囲を決めたときと違います(16:9以外)。「範囲・読み取りの調整」の「初期の範囲に戻す」を押すか、動画が全部見える状態で囲み直してください。';
     }
     return null;
   }
