@@ -26,22 +26,25 @@
   body { padding: 10px 14px; }
   details.fold { margin: 0 0 8px; }
   details.fold > summary { cursor: pointer; font-size: 12px; color: #555; padding: 2px 0; }
-  .main { display: flex; gap: 14px; align-items: flex-start; }
-  #playerWrap { display: none; position: sticky; top: 0; z-index: 10; flex: 1 1 0; min-width: 0; max-width: calc(64vh * 16 / 9); }
+  .main { display: block; }
+  #playerWrap { display: none; position: sticky; top: 0; z-index: 10; background: #f4f5f7; padding-bottom: 4px; max-width: calc((100vh - 300px) * 16 / 9); min-width: 320px; }
+  #ytBox { position: relative; }
   #ytFrame { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; background: #000; display: block; }
+  #ytShield { position: absolute; inset: 0; cursor: pointer; }
   #ytCtl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
   #ytCtl button, #ytCtl select { padding: 4px 8px; font-size: 12px; }
   #ytCtl .hint { font-size: 11px; color: #888; margin-left: 4px; }
-  #readout { flex: 0 0 230px; position: sticky; top: 0; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 10px 12px; }
-  #readout .ro { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #eef0f3; }
+  #ytSeekRow { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+  #ytSeek { flex: 1 1 auto; }
+  #readout { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: baseline; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 6px 12px; margin-top: 4px; max-width: calc((100vh - 300px) * 16 / 9); min-width: 320px; }
+  #readout .ro { display: flex; gap: 8px; align-items: baseline; }
   #readout .lab { font-size: 12px; color: #666; }
-  #readout .val { font-size: 26px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
-  #readout #status { margin-top: 8px; font-size: 12px; color: #3b5bdb; word-break: break-all; }
-  @media (max-width: 760px) { .main { flex-direction: column; } #readout { flex: none; width: auto; align-self: stretch; position: static; } }
+  #readout .val { font-size: 22px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
+  #readout #status { flex: 1 1 100%; font-size: 12px; color: #3b5bdb; word-break: break-all; min-height: 0; }
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01f(動画操作)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01g(大画面)</span></h1>
 
 <details class="fold">
   <summary>使い方</summary>
@@ -69,7 +72,11 @@
 
 <div class="main">
   <div id="playerWrap">
-    <iframe id="ytFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div id="ytBox">
+      <iframe id="ytFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div id="ytShield" title="クリックで再生/停止"></div>
+    </div>
+    <div id="ytSeekRow"><input type="range" id="ytSeek" min="0" max="1000" value="0"><span id="ytTimeLbl">0:00 / 0:00</span></div>
     <div id="ytCtl">
       <button data-yt="seek:-5">⏪5秒</button><button data-yt="seek:-1">1秒</button><button data-yt="step:-1">◀コマ</button>
       <button data-yt="toggle" class="primary" id="ytToggle">再生/停止</button>
@@ -298,7 +305,7 @@
     var id = youtubeId(url);
     if (!id) { setStatus('YouTubeのURLを認識できませんでした'); return; }
     var start = youtubeStart(url);
-    $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&enablejsapi=1&disablekb=1&origin=' + encodeURIComponent(location.origin);
+    $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&controls=0&fs=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&disablekb=1&origin=' + encodeURIComponent(location.origin);
     $('playerWrap').style.display = 'block';
     $('captureThisTab').disabled = false;
     setStatus('埋め込みました。再生できない場合は、動画の持ち主が埋め込みを許可していません。');
@@ -306,7 +313,12 @@
 
   // ---- player controls (YouTube iframe API over postMessage; the embed's own keys are unreliable) ----
   var YT_ORIGIN = 'https://www.youtube.com';
-  var ytTime = 0, ytState = -1;
+  var ytTime = 0, ytState = -1, ytDur = 0, ytScrub = false;
+  function fmtT(t) { t = Math.max(0, Math.floor(t)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
+  function ytShowTime() {
+    $('ytTimeLbl').textContent = fmtT(ytTime) + ' / ' + fmtT(ytDur);
+    if (!ytScrub && ytDur) $('ytSeek').value = Math.round(1000 * ytTime / ytDur);
+  }
   function ytPost(obj) {
     var w = $('ytFrame').contentWindow;
     if (w) w.postMessage(JSON.stringify(obj), YT_ORIGIN);
@@ -324,9 +336,17 @@
     if ((d.event === 'infoDelivery' || d.event === 'initialDelivery') && info) {
       if (typeof info.currentTime === 'number') ytTime = info.currentTime;
       if (typeof info.playerState === 'number') ytState = info.playerState;
+      if (typeof info.duration === 'number' && info.duration > 0) ytDur = info.duration;
+      ytShowTime();
     }
   });
-  function ytSeekBy(dt) { ytTime = Math.max(0, ytTime + dt); ytCmd('seekTo', [ytTime, true]); }
+  function ytSeekBy(dt) { ytTime = Math.max(0, ytTime + dt); ytCmd('seekTo', [ytTime, true]); ytShowTime(); }
+  $('ytSeek').addEventListener('input', function () {
+    if (!ytDur) return;
+    ytScrub = true; ytTime = ytDur * $('ytSeek').value / 1000; ytCmd('seekTo', [ytTime, true]); ytShowTime();
+  });
+  $('ytSeek').addEventListener('change', function () { ytScrub = false; });
+  $('ytShield').addEventListener('click', function () { ytAction('toggle'); });
   function ytAction(a) {
     if (a === 'toggle') { ytCmd(ytState === 1 ? 'pauseVideo' : 'playVideo'); ytState = ytState === 1 ? 2 : 1; return; }
     var m = /^(seek|step):(-?\d+)$/.exec(a);
