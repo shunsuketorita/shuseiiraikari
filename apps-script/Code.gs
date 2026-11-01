@@ -132,12 +132,15 @@ function parseGameWidgetHtml_(html) {
       var timeM = /<div class="ba-liveText__time">([^<]*)<\/div>/.exec(li);
       var nameM = /<span class="ba-liveText__name">([^<]*)<\/span>/.exec(li);
       var descM = /<div class="ba-liveText__desc">([^<]*)<\/div>/.exec(li);
+      var scoreM = /<span class="ba-liveText__score">\s*(\d+)-(\d+)\s*<\/span>/.exec(li);
       if (!timeM || !nameM || !descM) continue;
-      plays.push({
+      var play = {
         time: decodeHtmlEntities_(timeM[1].trim()),
         team: decodeHtmlEntities_(nameM[1].trim()),
         desc: decodeHtmlEntities_(descM[1].trim())
-      });
+      };
+      if (scoreM) play.score = [parseInt(scoreM[1], 10), parseInt(scoreM[2], 10)]; // running score, home-away
+      plays.push(play);
     }
     if (plays.length) quarters.push({ name: qName, plays: plays });
   }

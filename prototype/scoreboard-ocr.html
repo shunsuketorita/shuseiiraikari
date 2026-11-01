@@ -347,8 +347,10 @@
     return /OT/i.test(t) ? { q: 'OT' } : null;
   }
   function parseClock(t) {
-    var m = /(\d{1,2})[:.](\d{1,2})/.exec(t);
-    return m ? { min: +m[1], sec: +m[2] } : null;
+    var m = /(\d{1,2}):(\d{2})/.exec(t);
+    if (m) return { min: +m[1], sec: +m[2] };
+    m = /(\d{1,2})[.,]\d/.exec(t); // under a minute: 59.8
+    return m ? { min: 0, sec: +m[1] } : null;
   }
   function parseScore(t) {
     var n = t.match(/\d+/g);
