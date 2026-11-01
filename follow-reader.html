@@ -23,86 +23,110 @@
   #status { font-size: 13px; color: #3b5bdb; min-height: 1.4em; }
   pre { background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 10px; font-size: 12px; max-height: 240px; overflow: auto; margin-top: 12px; }
   label { white-space: nowrap; }
+  body { padding: 10px 14px; }
+  details.fold { margin: 0 0 8px; }
+  details.fold > summary { cursor: pointer; font-size: 12px; color: #555; padding: 2px 0; }
+  .main { display: flex; gap: 14px; align-items: flex-start; }
+  #playerWrap { display: none; position: sticky; top: 0; z-index: 10; flex: 1 1 0; min-width: 0; max-width: calc(64vh * 16 / 9); }
+  #ytFrame { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; background: #000; display: block; }
+  #readout { flex: 0 0 230px; position: sticky; top: 0; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 10px 12px; }
+  #readout .ro { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #eef0f3; }
+  #readout .lab { font-size: 12px; color: #666; }
+  #readout .val { font-size: 26px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
+  #readout #status { margin-top: 8px; font-size: 12px; color: #3b5bdb; word-break: break-all; }
+  @media (max-width: 760px) { .main { flex-direction: column; } #readout { flex: none; width: auto; align-self: stretch; position: static; } }
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01d(範囲固定)</span></h1>
-<p class="note">
-  本体アプリの「映像に追従する」から開いたウィンドウです。読み取った<b>ピリオド・時計・スコア</b>が本体に送られ、プレー一覧が映像に合わせて動きます。<br>
-  1. 下にYouTubeのURLを貼って「埋め込む」→「このタブの動画部分を読み取り対象にする」→ 共有ダイアログで<b>このタブ</b>を選びます。(別ウィンドウの映像を使う場合は「画面共有を開始」。)<br>
-  2. 動画はウィンドウの上に固定されます。ピリオド・時計・スコアの読み取り範囲は<b>あらかじめ固定</b>してあるので、囲む操作は要りません。プレビューの色の枠が数字に合っているか確認してください。<br>
-  3. 「自動で読み取る」がオンなら、1秒ごとに読み取って本体へ送ります。映像は外部に送信されず、ブラウザの中だけで処理します。
-</p>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-01e(画面整理)</span></h1>
 
-<div class="bar">
-  <input type="text" id="ytUrl" placeholder="YouTubeのURLを貼り付け(例: https://www.youtube.com/watch?v=...)" style="flex:1;min-width:260px;padding:6px 8px;border:1px solid #b8bec9;border-radius:8px;font:inherit;">
-  <button id="ytEmbed">埋め込む</button>
-  <button id="captureThisTab" class="primary" disabled>このタブの動画部分を読み取り対象にする</button>
-</div>
-<div id="playerWrap" style="display:none;position:sticky;top:0;z-index:10;background:#f4f5f7;padding:6px 0 10px;margin-bottom:6px;">
-  <iframe id="ytFrame" style="width:min(100%, calc(42vh * 16 / 9));aspect-ratio:16/9;border:0;border-radius:8px;background:#000;display:block;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-</div>
-
-
-<div class="bar">
-  <button id="startCapture" class="primary">画面共有を開始</button>
-  <button id="stopCapture" disabled>停止</button>
-  <label>または画像で試す: <input type="file" id="imgFile" accept="image/*"></label>
-</div>
-
-<details style="margin-bottom:10px;"><summary style="cursor:pointer;font-size:13px;color:#555;">範囲・読み取りの調整(通常は不要)</summary>
-<div class="bar" style="margin-top:8px;">
-  囲む領域:
-  <label><input type="radio" name="reg" value="period" checked> ピリオド(1st など)</label>
-  <label><input type="radio" name="reg" value="clock"> 時計(5:21 など)</label>
-  <label><input type="radio" name="reg" value="score"> スコア(両チーム分)</label>
-  <button id="clearRegions">初期の範囲に戻す</button>
-  <button id="copyRegions">範囲の設定をコピー</button>
-</div>
-
-<div class="bar">
-  <label><input type="checkbox" id="autoThr" checked> しきい値を自動(Otsu)</label>
-  <label>しきい値 <input type="range" id="thr" min="0" max="255" value="140"> <span id="thrVal">140</span></label>
-  <label><input type="checkbox" id="inv" checked> 明るい文字を黒に反転</label>
-  <label>拡大率 <select id="scale"><option>2</option><option selected>4</option><option>6</option></select></label>
-  <label>間隔 <select id="interval"><option value="500">0.5秒</option><option value="1000" selected>1秒</option><option value="2000">2秒</option></select></label>
-</div>
+<details class="fold">
+  <summary>使い方</summary>
+  <p class="note">
+    本体アプリの「映像に追従する」から開いたウィンドウです。読み取った<b>ピリオド・時計・スコア</b>が本体に送られ、プレー一覧が映像に合わせて動きます。<br>
+    1. YouTubeのURLを貼って「埋め込む」→「このタブの動画部分を読み取り対象にする」→ 共有ダイアログで<b>このタブ</b>を選びます。(別ウィンドウの映像を使う場合は「画面共有を開始」。)<br>
+    2. 読み取り範囲はあらかじめ固定してあります。動画が全部見える状態にしてください。<br>
+    3. 「自動で読み取る」がオンなら、1秒ごとに読み取って本体へ送ります。映像は外部に送信されず、ブラウザの中だけで処理します。
+  </p>
 </details>
 
-<div class="bar">
-  <button id="runOnce">1回読み取る</button>
-  <label><input type="checkbox" id="auto" checked> 自動で読み取る</label>
-  <span id="status"></span>
-</div>
-
-<div class="stage"><canvas id="view" width="640" height="360"></canvas></div>
-<video id="video" playsinline muted style="display:none"></video>
-
-<div class="panels">
-  <div class="panel">
-    <h2>ピリオド</h2>
-    <canvas id="periodProc"></canvas>
-    <div class="kv">認識テキスト: <span id="periodRaw">-</span> (信頼度 <span id="periodConf">-</span>)</div>
-    <div class="kv">解釈: <span class="big" id="periodParsed">-</span></div>
-    <div class="kv">しきい値: <span id="periodThr">-</span> / 成功率: <span id="periodRate">-</span></div>
+<details class="fold" id="setup" open>
+  <summary>動画の設定</summary>
+  <div class="bar">
+    <input type="text" id="ytUrl" placeholder="YouTubeのURLを貼り付け(例: https://www.youtube.com/watch?v=...)" style="flex:1;min-width:200px;padding:6px 8px;border:1px solid #b8bec9;border-radius:8px;font:inherit;">
+    <button id="ytEmbed">埋め込む</button>
   </div>
-  <div class="panel">
-    <h2>時計</h2>
-    <canvas id="clockProc"></canvas>
-    <div class="kv">認識テキスト: <span id="clockRaw">-</span> (信頼度 <span id="clockConf">-</span>)</div>
-    <div class="kv">解釈: <span class="big" id="clockParsed">-</span></div>
-    <div class="kv">しきい値: <span id="clockThr">-</span> / 成功率: <span id="clockRate">-</span></div>
+  <div class="bar">
+    <button id="captureThisTab" class="primary" disabled>このタブの動画部分を読み取り対象にする</button>
+    <button id="startCapture">別ウィンドウの画面を共有</button>
+    <button id="stopCapture" disabled>読み取りを停止</button>
+    <label><input type="checkbox" id="auto" checked> 自動で読み取る</label>
   </div>
-  <div class="panel">
-    <h2>スコア</h2>
-    <canvas id="scoreProc"></canvas>
-    <div class="kv">認識テキスト: <span id="scoreRaw">-</span> (信頼度 <span id="scoreConf">-</span>)</div>
-    <div class="kv">解釈: <span class="big" id="scoreParsed">-</span></div>
-    <div class="kv">しきい値: <span id="scoreThr">-</span> / 成功率: <span id="scoreRate">-</span></div>
+</details>
+
+<div class="main">
+  <div id="playerWrap">
+    <iframe id="ytFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>
+  <div id="readout">
+    <div class="ro"><span class="lab">ピリオド</span><span class="val" id="liveP">-</span></div>
+    <div class="ro"><span class="lab">時計</span><span class="val" id="liveC">-</span></div>
+    <div class="ro"><span class="lab">スコア</span><span class="val" id="liveS">-</span></div>
+    <div id="status"></div>
   </div>
 </div>
 
-<pre id="log">(読み取りログがここに出ます)</pre>
+<details class="fold" style="margin-top:12px;">
+  <summary>読み取りの詳細・範囲の調整(通常は不要)</summary>
+  <div class="bar" style="margin-top:8px;">
+    囲む領域:
+    <label><input type="radio" name="reg" value="period" checked> ピリオド(1st など)</label>
+    <label><input type="radio" name="reg" value="clock"> 時計(5:21 など)</label>
+    <label><input type="radio" name="reg" value="score"> スコア(両チーム分)</label>
+    <button id="clearRegions">初期の範囲に戻す</button>
+    <button id="copyRegions">範囲の設定をコピー</button>
+  </div>
+  <div class="bar">
+    <label><input type="checkbox" id="autoThr" checked> しきい値を自動(Otsu)</label>
+    <label>しきい値 <input type="range" id="thr" min="0" max="255" value="140"> <span id="thrVal">140</span></label>
+    <label><input type="checkbox" id="inv" checked> 明るい文字を黒に反転</label>
+    <label>拡大率 <select id="scale"><option>2</option><option selected>4</option><option>6</option></select></label>
+    <label>間隔 <select id="interval"><option value="500">0.5秒</option><option value="1000" selected>1秒</option><option value="2000">2秒</option></select></label>
+  </div>
+  <div class="bar">
+    <button id="runOnce">1回読み取る</button>
+    <label>または画像で試す: <input type="file" id="imgFile" accept="image/*"></label>
+  </div>
+
+  <div class="stage"><canvas id="view" width="640" height="360"></canvas></div>
+  <video id="video" playsinline muted style="display:none"></video>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>ピリオド</h2>
+      <canvas id="periodProc"></canvas>
+      <div class="kv">認識テキスト: <span id="periodRaw">-</span> (信頼度 <span id="periodConf">-</span>)</div>
+      <div class="kv">解釈: <span class="big" id="periodParsed">-</span></div>
+      <div class="kv">しきい値: <span id="periodThr">-</span> / 成功率: <span id="periodRate">-</span></div>
+    </div>
+    <div class="panel">
+      <h2>時計</h2>
+      <canvas id="clockProc"></canvas>
+      <div class="kv">認識テキスト: <span id="clockRaw">-</span> (信頼度 <span id="clockConf">-</span>)</div>
+      <div class="kv">解釈: <span class="big" id="clockParsed">-</span></div>
+      <div class="kv">しきい値: <span id="clockThr">-</span> / 成功率: <span id="clockRate">-</span></div>
+    </div>
+    <div class="panel">
+      <h2>スコア</h2>
+      <canvas id="scoreProc"></canvas>
+      <div class="kv">認識テキスト: <span id="scoreRaw">-</span> (信頼度 <span id="scoreConf">-</span>)</div>
+      <div class="kv">解釈: <span class="big" id="scoreParsed">-</span></div>
+      <div class="kv">しきい値: <span id="scoreThr">-</span> / 成功率: <span id="scoreRate">-</span></div>
+    </div>
+  </div>
+
+  <pre id="log">(読み取りログがここに出ます)</pre>
+</details>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
@@ -223,6 +247,7 @@
     stream = null;
     clearInterval(previewTimer);
     $('startCapture').disabled = false; $('stopCapture').disabled = true;
+    $('setup').open = true;
     setStatus('画面共有を停止しました');
   }
   $('stopCapture').addEventListener('click', stopCapture);
@@ -236,6 +261,7 @@
     clearInterval(previewTimer);
     previewTimer = setInterval(renderView, 250);
     $('startCapture').disabled = true; $('stopCapture').disabled = false;
+    $('setup').open = false;
     setStatus(label + ': ' + video.videoWidth + '×' + video.videoHeight);
   }
 
@@ -263,7 +289,7 @@
     if (!id) { setStatus('YouTubeのURLを認識できませんでした'); return; }
     var start = youtubeStart(url);
     $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&origin=' + encodeURIComponent(location.origin);
-    $('playerWrap').style.display = '';
+    $('playerWrap').style.display = 'block';
     $('captureThisTab').disabled = false;
     setStatus('埋め込みました。再生できない場合は、動画の持ち主が埋め込みを許可していません。');
   });
@@ -379,7 +405,12 @@
     return n && n.length >= 2 ? { home: +n[0], away: +n[1] } : null;
   }
 
+  var LIVE_IDS = { period: 'liveP', clock: 'liveC', score: 'liveS' };
   function show(name, res, parsed) {
+    showDetail(name, res, parsed);
+    $(LIVE_IDS[name]).textContent = res && parsed ? $(name + 'Parsed').textContent : '-';
+  }
+  function showDetail(name, res, parsed) {
     $(name + 'Raw').textContent = res ? '"' + res.text + '"' : '(領域未設定)';
     $(name + 'Conf').textContent = res ? res.conf : '-';
     $(name + 'Thr').textContent = res ? res.thr : '-';
@@ -452,6 +483,7 @@
       sendToApp(readings);
       var logEl = $('log');
       logEl.textContent = (logEl.textContent.indexOf('(読み取り') === 0 ? '' : logEl.textContent + '\n') + line;
+      var lines = logEl.textContent.split('\n'); if (lines.length > 60) logEl.textContent = lines.slice(-60).join('\n');
       logEl.scrollTop = logEl.scrollHeight;
     } catch (e) {
       setStatus('エラー: ' + e.message);
