@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 00:36</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 18:03</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3344,13 +3344,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [];
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102c'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
-    var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null;
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102d'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     // Picking a play to correct pauses the follow (otherwise the list scrolls away from the row being worked on).
     function followBarRender() {
       var bar = document.getElementById('followBar');
-      var text = (followHeld ? '追従を一時停止中(プレーを選んだため)' : '') + (followHeld && followSeekMsg ? ' / ' : '') + followSeekMsg;
+      var text = [followHeld ? '追従を一時停止中(プレーを選んだため)' : '', followSeekMsg, followStateMsg].filter(Boolean).join(' / ');
       document.getElementById('followBarText').textContent = text;
       document.getElementById('followResume').style.display = followHeld ? '' : 'none';
       bar.style.display = text ? 'flex' : 'none';
@@ -3483,6 +3483,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (!d || !followReaderWin || e.source !== followReaderWin || e.origin !== new URL(FOLLOW_READER_URL).origin) return;
       if (d.type === 'fls-follow-hello') { followSetStatus('読み取りウィンドウと接続しました。映像のピリオド・時計・スコアを囲んでください。'); return; }
       if (d.type === 'fls-follow') followHandleReading(d);
+      if (d.type === 'fls-follow-state') {
+        var msg = d.state === 'nocapture' ? '読み取りウィンドウで映像の共有がまだ始まっていません(「このタブの動画部分を読み取り対象にする」を押してください)'
+          : d.state === 'paused' ? '映像が一時停止中のため、読み取りを止めています' : '';
+        if (msg !== followStateMsg) { followStateMsg = msg; followBarRender(); }
+      }
       if (d.type === 'fls-seek-status') {
         followSeekMsg = String(d.text || '');
         clearTimeout(followSeekTimer);
@@ -3492,11 +3497,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
 
     document.getElementById('followOpenReader').addEventListener('click', function () {
-      followReaderWin = window.open(FOLLOW_READER_URL, 'fls-follow-reader', 'popup,width=1100,height=860');
+      // open it as the left ~64% of the screen so the two windows sit side by side without any dragging
+      var sw = screen.availWidth || 1400, sh = screen.availHeight || 900, sl = screen.availLeft || 0, st = screen.availTop || 0;
+      followReaderWin = window.open(FOLLOW_READER_URL, 'fls-follow-reader', 'popup,width=' + Math.round(sw * 0.64) + ',height=' + sh + ',left=' + sl + ',top=' + st);
+      followWasOpen = !!followReaderWin;
       followSetStatus(followReaderWin
         ? '読み取りウィンドウを開きました。そこでYouTubeを埋め込み、囲む範囲を指定してください。'
         : 'ウィンドウを開けませんでした。ポップアップのブロックを解除してください。');
     });
+
+    // notice when the reader window has been closed (the app would otherwise just sit there following nothing)
+    setInterval(function () {
+      if (followWasOpen && followReaderWin && followReaderWin.closed) {
+        followWasOpen = false; followReaderWin = null; followHeld = false;
+        followStateMsg = '読み取りウィンドウが閉じています。「映像に追従する」→「読み取りウィンドウを開く」で開き直してください(動画のURLは覚えています)';
+        followBarRender();
+      } else if (followWasOpen && followReaderWin && followStateMsg.indexOf('閉じています') === 0) {
+        followStateMsg = ''; followBarRender();
+      }
+    }, 2000);
 
     document.getElementById('followToggle').addEventListener('click', function () {
       var collapsed = document.getElementById('followBody').classList.toggle('collapsed');
