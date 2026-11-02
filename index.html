@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 18:40</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 19:08</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -2591,6 +2591,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({ event: 'generate_text', row_count: result.text.split('\n').length });
+    if (window.flsFollowResume) window.flsFollowResume(); // done with this play: let the list follow the video again
     if (typeof google !== 'undefined' && google.script && google.script.run) {
       google.script.run.withFailureHandler(function () {}).logGenerate(result.text.split('\n').length, gaClientId);
     }
@@ -3346,7 +3347,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [];
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102g'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102h'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
@@ -3369,9 +3370,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       followHeld = true; followPending = null; followBarRender();
     }
     document.getElementById('followGoto').addEventListener('click', function () { followScrollToForm(); });
-    document.getElementById('followResume').addEventListener('click', function () {
-      followHeld = false; followPending = null; followBarRender();
-    });
+    function followResumeNow() { followHeld = false; followPending = null; followShowGoto(false); followBarRender(); }
+    window.flsFollowResume = function () { if (followHeld) followResumeNow(); };
+    document.getElementById('followResume').addEventListener('click', followResumeNow);
     function followRequestSeek(qi, p) {
       if (!document.getElementById('followSeek').checked || !followReaderWin || followReaderWin.closed) return;
       var rem = followRemainingSeconds(p.time);
@@ -3413,6 +3414,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
       }
       var qi = rd.qi != null ? rd.qi : (anchor >= 0 ? flat[anchor].qi : -1);
+      if (anchor >= 0 && rd.qi != null && flat[anchor].qi !== rd.qi && rd.sec != null && flat[lo].rem != null) {
+        // The period is the digit that gets misread most (3rd read as 1st); a score exists once per game, so if the
+        // clock fits the span that score points to, believe the score's quarter.
+        var endRem0 = (hi + 1 < flat.length && flat[hi + 1].qi === flat[anchor].qi && flat[hi + 1].rem != null) ? flat[hi + 1].rem : 0;
+        if (rd.sec <= flat[lo].rem + 5 && rd.sec >= endRem0 - 5) qi = flat[anchor].qi;
+      }
       if (qi < 0) return null;
       var withoutScore = function () { return strict ? null : followLocate(flat, { qi: rd.qi, sec: rd.sec, score: null }); };
       if (strict && anchor < 0) return null;
