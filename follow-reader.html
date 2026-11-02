@@ -28,16 +28,16 @@
   details.fold { margin: 0 0 4px; }
   details.fold > summary { cursor: pointer; font-size: 12px; color: #555; padding: 2px 0; }
   .main { display: block; }
-  #playerWrap { display: none; position: sticky; top: 0; z-index: 10; background: #f4f5f7; padding-bottom: 4px; max-width: calc((100vh - 300px) * 16 / 9); min-width: 320px; }
+  #playerWrap { display: none; position: sticky; top: 0; z-index: 10; background: #f4f5f7; padding-bottom: 4px; max-width: calc((100vh - 300px) * 16 / 11); min-width: 320px; }
   #ytBox { position: relative; }
-  #ytFrame { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; background: #000; display: block; }
+  #ytFrame { width: 100%; aspect-ratio: 16 / 11; border: 0; border-radius: 8px; background: #000; display: block; }
   #ytShield { position: absolute; inset: 0; cursor: pointer; }
   #ytCtl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
   #ytCtl button, #ytCtl select { padding: 4px 8px; font-size: 12px; }
   #ytCtl .hint { font-size: 11px; color: #888; margin-left: 4px; }
   #ytSeekRow { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
   #ytSeek { flex: 1 1 auto; }
-  #readout { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: baseline; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 6px 12px; margin-top: 4px; max-width: calc((100vh - 300px) * 16 / 9); min-width: 320px; }
+  #readout { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: baseline; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 6px 12px; margin-top: 4px; max-width: calc((100vh - 300px) * 16 / 11); min-width: 320px; }
   #readout .ro { display: flex; gap: 8px; align-items: baseline; }
   #readout .lab { font-size: 12px; color: #666; }
   #readout .val { font-size: 22px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02e(探索中は再生を維持)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02f(黒帯に逃がす)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -164,6 +164,16 @@
     _aspect: 16 / 9
   };
   function defaultRegions() { return JSON.parse(JSON.stringify(DEFAULT_REGIONS)); }
+  // The embedded player frame is 16:11 so the 16:9 picture sits in the middle with black bands above and below
+  // (YouTube draws its title / "more videos" / bar on the bands instead of over the scoreboard).
+  var EMBED_ASPECT = 16 / 11, BAND = (1 - (9 / 16) / (11 / 16)) / 2, PIC_H = (9 / 16) / (11 / 16);
+  function defaultRegionsFor(embedded) {
+    var d = defaultRegions();
+    if (!embedded) return d;
+    ['period', 'clock', 'score'].forEach(function (n) { d[n] = { x: d[n].x, y: BAND + d[n].y * PIC_H, w: d[n].w, h: d[n].h * PIC_H }; });
+    d._aspect = EMBED_ASPECT;
+    return d;
+  }
   var NAMES = ['period', 'clock', 'score'];
   var COLORS = { period: '#f08c00', clock: '#ff4d4f', score: '#2f9e44' };
   var LABELS = { period: 'ピリオド', clock: '時計', score: 'スコア' };
@@ -176,7 +186,8 @@
   var dragging = null;
   var cropTab = false;
 
-  try { var saved = JSON.parse(localStorage.getItem(REG_KEY) || 'null'); if (saved) regions = saved; } catch (e) {}
+  var usingDefaults = true;
+  try { var saved = JSON.parse(localStorage.getItem(REG_KEY) || 'null'); if (saved) { regions = saved; usingDefaults = false; } } catch (e) {}
   function saveRegions() { try { localStorage.setItem(REG_KEY, JSON.stringify(regions)); } catch (e) {} }
   function setStatus(s) { $('status').textContent = s; }
   function activeRegion() { return document.querySelector('input[name=reg]:checked').value; }
@@ -230,6 +241,7 @@
     if (w > 6 && h > 6) {
       regions[activeRegion()] = { x: x / view.width, y: y / view.height, w: w / view.width, h: h / view.height };
       regions._aspect = view.width / view.height;
+      usingDefaults = false;
       saveRegions();
     }
     renderView();
@@ -242,7 +254,7 @@
     else setStatus('コピーできませんでした: ' + text);
   });
   $('clearRegions').addEventListener('click', function () {
-    regions = defaultRegions();
+    regions = defaultRegionsFor(cropTab); usingDefaults = true;
     try { localStorage.removeItem(REG_KEY); } catch (e) {}
     stats = { period: { ok: 0, total: 0 }, clock: { ok: 0, total: 0 }, score: { ok: 0, total: 0 } };
     renderView();
@@ -274,6 +286,7 @@
   $('stopCapture').addEventListener('click', stopCapture);
 
   async function useStream(s, label) {
+    if (usingDefaults) regions = defaultRegionsFor(cropTab);
     stream = s;
     video.srcObject = stream;
     await video.play();
@@ -400,7 +413,7 @@
     var rest = wrap.offsetHeight - $('ytBox').offsetHeight + $('readout').offsetHeight + 8;
     var top = main.getBoundingClientRect().top + window.scrollY;
     var maxH = window.innerHeight - top - rest - 10;
-    var w = Math.max(320, Math.min(main.clientWidth, Math.floor(maxH * 16 / 9)));
+    var w = Math.max(320, Math.min(main.clientWidth, Math.floor(maxH * 16 / 11)));
     if (Math.abs(w - wrap.offsetWidth) > 6 || wrap.style.maxWidth === '') {
       wrap.style.maxWidth = w + 'px'; $('readout').style.maxWidth = w + 'px';
     }
