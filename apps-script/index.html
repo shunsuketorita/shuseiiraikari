@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 18:21</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-02 18:40</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -578,6 +578,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div id="followBar" style="display:none;margin-top:10px;padding:8px 10px;border:1px solid var(--border, #dde1e6);border-radius:10px;background:var(--panel-2);font-size:12.5px;align-items:center;gap:10px;flex-wrap:wrap;">
           <span id="followBarText"></span>
           <button class="theme-toggle" id="followResume" type="button" style="display:none;">追従に戻る</button>
+          <button class="theme-toggle" id="followGoto" type="button" style="display:none;">選んだプレーの修正へ進む</button>
         </div>
         <div id="gameLoadResults"></div>
       </div>
@@ -3328,9 +3329,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             followRequestSeek(qi, p);
             lastSelectedPlayRowEl = row;
             lastSelectedPlayListEl = list;
-            var target = getSegValue('seg-correction') === '修正' ? modPanelWrap : document.getElementById('panelAWrap');
-            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (followViewMode()) { followShowGoto(true); return; } // just looking at the play in the video: stay here
+            followScrollToForm();
           });
+          row.addEventListener('dblclick', followScrollToForm); // double-click always goes to the correction form
           list.appendChild(row);
         });
 
@@ -3344,21 +3346,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [];
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102f'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261102g'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
+    function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
+    function followScrollToForm() {
+      var target = getSegValue('seg-correction') === '修正' ? modPanelWrap : document.getElementById('panelAWrap');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function followShowGoto(on) { document.getElementById('followGoto').style.display = on ? '' : 'none'; }
     // Picking a play to correct pauses the follow (otherwise the list scrolls away from the row being worked on).
     function followBarRender() {
       var bar = document.getElementById('followBar');
       var text = [followHeld ? '追従を一時停止中(プレーを選んだため)' : '', followSeekMsg, followStateMsg].filter(Boolean).join(' / ');
       document.getElementById('followBarText').textContent = text;
       document.getElementById('followResume').style.display = followHeld ? '' : 'none';
-      bar.style.display = text ? 'flex' : 'none';
+      var gotoOn = document.getElementById('followGoto').style.display !== 'none';
+      bar.style.display = (text || gotoOn) ? 'flex' : 'none';
     }
     function followHold() {
       if (!document.getElementById('followAuto').checked || !followReaderWin || followReaderWin.closed) return;
       followHeld = true; followPending = null; followBarRender();
     }
+    document.getElementById('followGoto').addEventListener('click', function () { followScrollToForm(); });
     document.getElementById('followResume').addEventListener('click', function () {
       followHeld = false; followPending = null; followBarRender();
     });
@@ -3389,7 +3399,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     // rd = { qi, sec, score }. A running score appears on exactly one play per game, so it pins the
     // position to the span between two scoring plays; the clock then picks the play inside that span.
-    function followLocate(flat, rd) {
+    // strict: return null unless the score is a real score of this game AND the clock agrees with where that score places us
+    function followLocate(flat, rd, strict) {
       if (!flat.length) return null;
       var anchor = -1, lo = 0, hi = flat.length - 1, i;
       if (rd.score) {
@@ -3403,7 +3414,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       }
       var qi = rd.qi != null ? rd.qi : (anchor >= 0 ? flat[anchor].qi : -1);
       if (qi < 0) return null;
-      var withoutScore = function () { return followLocate(flat, { qi: rd.qi, sec: rd.sec, score: null }); };
+      var withoutScore = function () { return strict ? null : followLocate(flat, { qi: rd.qi, sec: rd.sec, score: null }); };
+      if (strict && anchor < 0) return null;
       // A misread score can still match some other real score. If the clock contradicts the span that
       // score points to, trust the period+clock instead of the score.
       if (anchor >= 0 && rd.sec != null && flat[lo].qi === qi && flat[lo].rem != null) {
@@ -3467,6 +3479,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         (sec != null ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '?') + ' / ' +
         (score ? score[0] + '-' + score[1] : '?');
       var idx = followLocate(followFlat, rd);
+      // Misread digits (7 as 1, 5 as 3/9) make the score or clock contradict the game data. If the reading does not fit,
+      // try the reader's single/double-digit alternatives and take the cheapest one that fits both score and clock.
+      if (rd.score && rd.sec != null && d.alts && followLocate(followFlat, rd, true) == null) {
+        var cands = [];
+        var sAlts = Array.isArray(d.alts.score) ? d.alts.score : [], cAlts = Array.isArray(d.alts.clock) ? d.alts.clock : [];
+        cAlts.forEach(function (c) { cands.push({ cost: c.cost, score: rd.score, sec: c.sec }); });
+        sAlts.forEach(function (a) {
+          cands.push({ cost: a.cost, score: [a.h, a.a], sec: rd.sec });
+          cAlts.forEach(function (c) { cands.push({ cost: a.cost + c.cost, score: [a.h, a.a], sec: c.sec }); });
+        });
+        cands.sort(function (x, y) { return x.cost - y.cost; });
+        for (var ci = 0; ci < cands.length && ci < 600; ci++) {
+          var hit = followLocate(followFlat, { qi: rd.qi, sec: cands[ci].sec, score: cands[ci].score }, true);
+          if (hit != null) {
+            idx = hit;
+            reading += '(補正: ' + Math.floor(cands[ci].sec / 60) + ':' + String(cands[ci].sec % 60).padStart(2, '0') + ' / ' + cands[ci].score[0] + '-' + cands[ci].score[1] + ')';
+            break;
+          }
+        }
+      }
       if (idx == null) {
         followPending = null;
         followSetStatus('読み取り: ' + reading + '(位置を特定できませんでした)');

@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02f(黒帯に逃がす)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02g(数字の補正)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -571,7 +571,8 @@
       type: 'fls-follow',
       q: period ? period.q : null,
       sec: clock ? clock.min * 60 + clock.sec : null,
-      score: score ? [score.home, score.away] : null
+      score: score ? [score.home, score.away] : null,
+      alts: altsFor(clock, score)
     }, '*');
   }
   if (appWindow()) appWindow().postMessage({ type: 'fls-follow-hello' }, '*');
@@ -716,6 +717,24 @@
       });
     });
     return best;
+  }
+  // what the numbers could be if one or two digits were misread (the app picks the one that fits the game data)
+  function altsFor(clock, score) {
+    var out = { clock: [], score: [] };
+    if (clock) {
+      digitVariants(String(clock.min) + String(clock.sec).padStart(2, '0')).forEach(function (v) {
+        var sec = +v.s.slice(-2);
+        if (v.cost && sec < 60) out.clock.push({ sec: +v.s.slice(0, -2) * 60 + sec, cost: v.cost });
+      });
+    }
+    if (score) {
+      digitVariants(String(score.home)).forEach(function (h) {
+        digitVariants(String(score.away)).forEach(function (a) {
+          if (h.cost + a.cost >= 1 && h.cost + a.cost <= 2) out.score.push({ h: +h.s, a: +a.s, cost: h.cost + a.cost });
+        });
+      });
+    }
+    return out;
   }
   function stabilize(raw) {
     var out = { period: null, clock: null, score: null }, now = Date.now();
