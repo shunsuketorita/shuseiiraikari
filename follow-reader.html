@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02h(ピリオド補正)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02i(拡大率の自動化)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -111,7 +111,7 @@
     <label><input type="checkbox" id="autoThr" checked> しきい値を自動(Otsu)</label>
     <label>しきい値 <input type="range" id="thr" min="0" max="255" value="140"> <span id="thrVal">140</span></label>
     <label><input type="checkbox" id="inv" checked> 明るい文字を黒に反転</label>
-    <label>拡大率 <select id="scale"><option>2</option><option selected>4</option><option>6</option></select></label>
+    <label>拡大率 <select id="scale"><option value="auto" selected>自動</option><option>2</option><option>4</option><option>6</option></select></label>
     <label>間隔 <select id="interval"><option value="500">0.5秒</option><option value="1000" selected>1秒</option><option value="2000">2秒</option></select></label>
   </div>
   <div class="bar">
@@ -461,12 +461,18 @@
     return thr;
   }
 
+  // the engine reads best when a digit is roughly 40-90px tall; much bigger (a large window) and it returns nothing, so size the magnification by the captured region
+  function baseScale(sh) {
+    var v = $('scale').value;
+    if (v !== 'auto') return +v;
+    return Math.max(0.5, Math.min(6, 110 / Math.max(1, sh)));
+  }
   function preprocess(name, scaleOverride) {
     var r = regions[name];
     if (!r || !source) return null;
     var w = srcW(), h = srcH();
     var sx = r.x * w, sy = r.y * h, sw = r.w * w, sh = r.h * h;
-    var scale = scaleOverride || +$('scale').value, pad = 14;
+    var scale = scaleOverride || baseScale(sh), pad = 14;
     var c1 = document.createElement('canvas');
     c1.width = Math.max(1, Math.round(sw * scale)); c1.height = Math.max(1, Math.round(sh * scale));
     var x1 = c1.getContext('2d', { willReadFrequently: true });
@@ -768,7 +774,8 @@
   function parseFor(name, text) { return name === 'period' ? parsePeriod(text) : name === 'clock' ? parseClock(text) : parseScore(text); }
   // read at the chosen magnification; if the engine is unsure, look again at other magnifications and let the readings vote
   async function readBest(name) {
-    var base = +$('scale').value, scales = [base, 3, 5].filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var r = regions[name], base = r && source ? baseScale(r.h * srcH()) : 4;
+    var scales = [base, base * 0.7, base * 1.35].map(function (v) { return Math.round(v * 100) / 100; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
     var cands = [], first = null;
     for (var i = 0; i < scales.length; i++) {
       var res = await readRegion(name, scales[i]);
