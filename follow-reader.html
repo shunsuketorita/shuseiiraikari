@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02d(状態表示)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02e(探索中は再生を維持)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -84,6 +84,7 @@
       <button data-yt="seek:-5">⏪5秒</button><button data-yt="seek:-1">1秒</button><button data-yt="step:-1">◀コマ</button>
       <button data-yt="toggle" class="primary" id="ytToggle">再生/停止</button>
       <button data-yt="step:1">コマ▶</button><button data-yt="seek:1">1秒</button><button data-yt="seek:5">5秒⏩</button>
+      <button id="ytMuteBtn" title="音の入/切">音: 入</button>
       <select id="ytRate" title="再生速度"><option value="0.25">0.25倍</option><option value="0.5">0.5倍</option><option value="1" selected>1倍</option><option value="1.5">1.5倍</option><option value="2">2倍</option></select>
       <span class="hint">キー: スペース=再生/停止 ←→=5秒 j l=10秒 , .=1コマ</span>
     </div>
@@ -325,7 +326,7 @@
 
   // ---- player controls (YouTube iframe API over postMessage; the embed's own keys are unreliable) ----
   var YT_ORIGIN = 'https://www.youtube.com';
-  var ytTime = 0, ytState = -1, ytDur = 0, ytScrub = false, ocrWake = 0, pausedNoted = false;
+  var ytTime = 0, ytState = -1, ytApiState = -1, ytMuted = false, ytDur = 0, ytScrub = false, ocrWake = 0, pausedNoted = false;
   function fmtT(t) { t = Math.max(0, Math.floor(t)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
   function ytShowTime() {
     $('ytTimeLbl').textContent = fmtT(ytTime) + ' / ' + fmtT(ytDur);
@@ -347,7 +348,8 @@
     var info = d.info;
     if ((d.event === 'infoDelivery' || d.event === 'initialDelivery') && info) {
       if (typeof info.currentTime === 'number') ytTime = info.currentTime;
-      if (typeof info.playerState === 'number') ytState = info.playerState;
+      if (typeof info.playerState === 'number') { ytState = info.playerState; ytApiState = info.playerState; }
+      if (typeof info.muted === 'boolean') { ytMuted = info.muted; $('ytMuteBtn').textContent = ytMuted ? '音: 切' : '音: 入'; }
       if (typeof info.duration === 'number' && info.duration > 0) ytDur = info.duration;
       ytShowTime();
     }
@@ -373,6 +375,7 @@
     var b = e.target.closest('button[data-yt]');
     if (b) ytAction(b.getAttribute('data-yt'));
   });
+  $('ytMuteBtn').addEventListener('click', function () { ytCmd(ytMuted ? 'unMute' : 'mute'); });
   $('ytRate').addEventListener('change', function () { ytCmd('setPlaybackRate', [+$('ytRate').value]); });
   window.addEventListener('keydown', function (e) {
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
@@ -593,6 +596,7 @@
     var q = e >= 2400 ? 'OT' : Math.floor(e / 600) + 1, rem = e >= 2400 ? 300 - (e - 2400) : 600 - (e % 600);
     return (q === 'OT' ? 'OT' : q + 'Q') + ' ' + Math.floor(rem / 60) + ':' + String(Math.max(0, rem % 60)).padStart(2, '0');
   }
+  function stateLabel() { return ytApiState === 1 ? '再生中' : ytApiState === 2 ? '一時停止' : ytApiState === 3 ? '読み込み中' : '未再生'; }
   function toApp(obj) { var a = appWindow(); if (a) a.postMessage(obj, '*'); }
   function seekSay(text, done) { setStatus(text); toApp({ type: 'fls-seek-status', text: text, done: !!done }); }
   function cancelSeek() { if (seekJob) { seekJob = null; seekSay('', true); } }
@@ -607,7 +611,7 @@
     if (!$('ytFrame').src || !ytDur) { seekSay('動画が埋め込まれていません。読み取りウィンドウで動画を埋め込んでください。', true); return; }
     if (!source || !cropTab) { seekSay('映像の読み取りが始まっていません。先に「このタブの動画部分を読み取り対象にする」を押してください。', true); return; }
     seekJob = { e: e, lead: Math.min(3, e >= 2400 ? e - 2400 : e % 600), iter: 0, fails: 0, okCount: 0, lastD: 0, seekAt: 0 };
-    if (ytState !== 1) { ytCmd('playVideo'); ytState = 1; }
+    ytCmd('mute'); ytCmd('playVideo'); ytState = 1; // muted autoplay is always allowed; a paused player hides the scoreboard behind "more videos"
     var best = null;
     obs.forEach(function (o) { if (!best || Math.abs(o.e - e) < Math.abs(best.e - e)) best = o; });
     seekSay('映像を探しています… 目標 ' + labelOf(e));
@@ -616,12 +620,16 @@
   }
   function seekStep(raw, tickStart, tickYt) {
     var job = seekJob;
+    if (job && ytApiState !== 1 && ytApiState !== 3 && Date.now() > (job.nextPlayAt || 0)) { // the player stopped (or never started): start it again
+      ytCmd('mute'); ytCmd('playVideo'); job.nextPlayAt = Date.now() + 1500;
+    }
     if (!job || tickStart < job.seekAt + 1200) return; // that frame is from before the last jump
     var eNow = raw.period && raw.clock ? elapsedOf(raw.period.q, raw.clock.min * 60 + raw.clock.sec) : null;
     if (eNow == null) {
       if (++job.fails >= 2) { // no scoreboard here (break, replay, or not at the game yet): move on
         job.fails = 0;
         job.nudges = (job.nudges || 0) + 1;
+        seekSay('スコアボードが読めません(映像: ' + stateLabel() + ')。場所を変えて探しています… 目標 ' + labelOf(job.e));
         if (job.lastD) seekTo(tickYt + Math.sign(job.lastD) * Math.min(900, 45 * Math.pow(2, job.nudges - 1))); // grow the step toward the target
         else { // never saw the scoreboard: guess by proportion, then sweep the whole video
           var k = job.blind = (job.blind || 0) + 1;
@@ -635,12 +643,12 @@
     var d = (job.e - job.lead) - eNow;
     job.lastD = d;
     if (Math.abs(d) <= 3) {
-      if (++job.okCount >= 2) { seekJob = null; seekSay('移動しました: ' + labelOf(eNow) + ' 付近' + (job.lead ? '(目標の約' + job.lead + '秒前)' : ''), true); }
+      if (++job.okCount >= 2) { seekJob = null; seekSay('移動しました: ' + labelOf(eNow) + ' 付近' + (job.lead ? '(目標の約' + job.lead + '秒前)' : '') + (ytMuted ? ' ※音は切ってあります(「音」ボタンで戻せます)' : ''), true); }
       return;
     }
     job.okCount = 0;
     if (++job.iter > 15) { seekJob = null; seekSay('目標の場面に合わせきれませんでした(いま ' + labelOf(eNow) + ')', true); return; }
-    seekSay('映像を探しています… いま ' + labelOf(eNow) + ' → 目標 ' + labelOf(job.e) + '(' + job.iter + '回目)');
+    seekSay('映像を探しています… いま ' + labelOf(eNow) + ' → 目標 ' + labelOf(job.e) + '(' + job.iter + '回目・映像: ' + stateLabel() + ')');
     seekTo(tickYt + d);
   }
   window.addEventListener('message', function (e) {
