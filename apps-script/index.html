@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 00:54</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:19</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3301,6 +3301,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       followLists = [];
       followNowRow = null;
       followPending = null;
+      followGuard = null;
       followFlat = followBuildFlat(gameQuartersData);
       gameQuartersData.forEach(function (q, qi) {
         followRows[qi] = [];
@@ -3367,7 +3368,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // ===== 映像に追従(試験機能) =====
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
-    var followRows = [], followLists = [], followFlat = [];
+    var followRows = [], followLists = [], followFlat = [], followGuard = null;
     var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261110a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
@@ -3391,7 +3392,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       followHeld = true; followPending = null; followBarRender();
     }
     document.getElementById('followGoto').addEventListener('click', function () { followScrollToForm(); });
-    function followResumeNow() { followHeld = false; followPending = null; followShowGoto(false); followBarRender(); }
+    function followResumeNow() { followHeld = false; followPending = null; followGuard = null; followShowGoto(false); followBarRender(); }
     window.flsFollowResume = function () { if (followHeld) followResumeNow(); };
     document.getElementById('followResume').addEventListener('click', followResumeNow);
     function followRequestSeek(qi, p) {
@@ -3478,6 +3479,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var n = t.match(/\d+/g);
       return n && n.length >= 2 ? [+n[0], +n[1]] : null;
     }
+    // Jump guard: a reading that lands far from where we are is more often a misread than a real seek.
+    // Small moves (a few plays, or about as far as the clock could have run) follow at once; a big jump
+    // moves only after several consecutive readings agree on the same new place.
+    function followAbsTime(f) {
+      var len = f.qi < 4 ? 600 : 300, start = f.qi < 4 ? f.qi * 600 : 2400 + (f.qi - 4) * 300;
+      return start + len - f.rem;
+    }
+    function followGuardNew() { return { cur: null, curIdx: null, at: 0, anchor: null, streak: 0 }; }
+    // returns { kind: 'near' | 'wait' | 'jump', have, need }; the caller calls followGuardAccept once it really moves
+    function followGuardStep(st, idx, abs, now) {
+      var near = st.cur != null && (Math.abs(idx - st.curIdx) <= 3 || Math.abs(abs - st.cur) <= 25 + 3 * Math.max(0, now - st.at) / 1000);
+      if (near) { st.anchor = null; st.streak = 0; return { kind: 'near' }; }
+      if (st.anchor != null && Math.abs(abs - st.anchor) <= 15) st.streak++;
+      else { st.anchor = abs; st.streak = 1; }
+      var need = st.cur == null ? 3 : 4;
+      return { kind: st.streak >= need ? 'jump' : 'wait', have: st.streak, need: need };
+    }
+    function followGuardAccept(st, idx, abs, now) { st.cur = abs; st.curIdx = idx; st.at = now; st.anchor = null; st.streak = 0; }
     // </follow-logic>
 
     function followSetStatus(t) { document.getElementById('followStatus').textContent = t; }
@@ -3533,9 +3552,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         return;
       }
       var f = followFlat[idx], p = gameQuartersData[f.qi].plays[f.pi];
-      if (!followHeld && idx === followPending) followApplyIdx(idx); // move only after two identical readings in a row
+      var note = '';
+      if (!followHeld) {
+        if (!followGuard) followGuard = followGuardNew();
+        var now = Date.now(), abs = followAbsTime(f), g = followGuardStep(followGuard, idx, abs, now);
+        if (g.kind === 'near') {
+          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); } // move only after two identical readings in a row
+        } else if (g.kind === 'jump') {
+          followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now);
+        } else {
+          note = '(大きく離れた読み取りです。誤読を避けるため確認中 ' + g.have + '/' + g.need + ')';
+        }
+      }
       followPending = idx;
-      followSetStatus('読み取り: ' + reading + ' → ' + p.time.replace('残り', '') + ' ' + p.team + ' ' + p.desc);
+      followSetStatus('読み取り: ' + reading + ' → ' + p.time.replace('残り', '') + ' ' + p.team + ' ' + p.desc + note);
     }
 
     window.addEventListener('message', function (e) {
