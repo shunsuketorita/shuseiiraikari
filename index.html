@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-10 23:57</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 00:54</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -1612,7 +1612,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       { key: 'scorer', label: 'シュート選手(背番号)', field: 'primaryPlayer' },
       { key: 'position', label: 'シュート位置', field: 'scorePosition' },
       { key: 'result', label: 'シュート結果', field: 'scoreResult' },
-      { key: 'multiple', label: '複数を変更したい場合', field: 'scoreMultiple' }
+      { key: 'multiple', label: '複数を変更したい場合', field: 'scoreMultiple' },
+      { key: 'remove', label: 'シュートを消す(有無)', field: 'removePlay' }
     ],
     shotStyle: [
       { key: 'style', label: 'シュートのシュート種類', field: 'shotStyleOnly' }
@@ -1633,7 +1634,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       { key: 'all', label: 'ファウル', field: 'foulFull' }
     ],
     turnover: [
-      { key: 'all', label: 'ターンオーバー', field: 'turnoverFull' }
+      { key: 'all', label: 'ターンオーバー', field: 'turnoverFull' },
+      { key: 'remove', label: 'TOSTを消す(有無)', field: 'removePlay' }
     ],
     substitution: [
       { key: 'inout', label: 'IN/OUT選手', field: 'subInOutFull' },
@@ -1966,6 +1968,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       }
       setupSeg('modOnCourtTeamSeg', renderOnCourtTeams);
       renderOnCourtTeams();
+    } else if (def.field === 'removePlay') {
+      var rmKind = modCategorySel.value === 'turnover' ? 'TOST有無' : 'シュート有無';
+      modFieldsContainer.innerHTML =
+        '<p class="section-sub" style="margin:0;">このプレーを消す指摘を「' + rmKind + '」として作ります(修正前: 上で選んだ選手のプレー / 修正後: なし)。' +
+        (modCategorySel.value === 'turnover' ? 'スティールが付いていた場合は、上の「修正前のスティール選手」を選ぶと、修正前に ST も入ります。' : '') + '</p>';
     } else if (def.field === 'freeText') {
       modFieldsContainer.innerHTML =
         '<div class="row two-col">' +
@@ -1973,6 +1980,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         '<div><label for="modAfterFree">修正後の内容</label><textarea id="modAfterFree"></textarea></div>' +
         '</div>';
     }
+    var removing = def.field === 'removePlay';
+    if (removing) setAfterClockOpen(false);
+    document.getElementById('modAfterClockRow').style.display = removing ? 'none' : '';
+    var toExtraBox = document.getElementById('modTurnoverBeforeExtra');
+    if (toExtraBox && toExtraBox.firstElementChild) toExtraBox.firstElementChild.style.display = removing ? 'none' : '';
     refreshAllRosterSelects();
   }
 
@@ -2262,6 +2274,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             var scoreClockLabel = sheetPlayer(team, effScoreAfterVal) + ' シュート';
             pushRow(period, clock, 'クロック', scoreClockLabel + ' ' + sheetClock(clock), scoreClockLabel + ' ' + sheetClock(afterClock));
           }
+        }
+      } else if (def.field === 'removePlay') {
+        if (modCategorySel.value === 'turnover') {
+          var rmStealVal = getRosterVal(modPanelWrap, 'modBeforeStealPlayer');
+          var rmOppTeam = team === 'home' ? 'away' : 'home';
+          var rmBefore = sheetPlayer(team, player) + ' TO' + (rmStealVal && rmStealVal !== 'スティールなし' ? ' / ST ' + sheetPlayer(rmOppTeam, rmStealVal) : '');
+          pushRow(period, clock, 'TOST有無', rmBefore, 'なし');
+        } else {
+          pushRow(period, clock, 'シュート有無', sheetPlayer(team, player) + ' シュート', 'なし');
         }
       } else if (def.field === 'turnoverFull') {
         var afterTeam2 = getSegValue('modTurnoverAfterTeamSeg') || team;
