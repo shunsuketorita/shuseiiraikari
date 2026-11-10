@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-10a(速度ボタン)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-11a(再生位置の照合)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -331,7 +331,7 @@
     var savedPos = lsGet(POS_KEY, null);
     if (!start && savedPos && savedPos.id === id && savedPos.t > 5) start = Math.max(0, Math.floor(savedPos.t) - 2);
     lsSet(URL_KEY, url);
-    ytTime = start || 0; ytDur = 0; obs = []; cancelSeek();
+    ytTime = start || 0; ytDur = 0; obs = []; cancelSeek(); curVid = id;
     $('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1' + (start ? '&start=' + start : '') + '&controls=0&fs=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&disablekb=1&origin=' + encodeURIComponent(location.origin);
     $('playerWrap').style.display = 'block';
     $('captureThisTab').disabled = false;
@@ -340,6 +340,7 @@
 
   // ---- player controls (YouTube iframe API over postMessage; the embed's own keys are unreliable) ----
   var YT_ORIGIN = 'https://www.youtube.com';
+  var curVid = null;
   var ytTime = 0, ytState = -1, ytApiState = -1, ytMuted = false, ytDur = 0, ytScrub = false, ocrWake = 0, pausedNoted = false;
   function fmtT(t) { t = Math.max(0, Math.floor(t)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
   function ytShowTime() {
@@ -584,7 +585,8 @@
     $('conn').textContent = appWindow() ? '● 本体アプリに接続中' : '○ 本体アプリに接続されていません(読み取りテストのみ可能)';
     $('conn').style.color = appWindow() ? '#2f9e44' : '#c92a2a';
   }
-  function sendToApp(readings) {
+  // vt: the video position this frame came from (seconds) — lets the app check a reading against the video timeline
+  function sendToApp(readings, vt) {
     var app = appWindow();
     updateConn();
     if (!app) return;
@@ -594,7 +596,9 @@
       q: period ? period.q : null,
       sec: clock ? clock.min * 60 + clock.sec : null,
       score: score ? [score.home, score.away] : null,
-      alts: altsFor(clock, score)
+      alts: altsFor(clock, score),
+      vt: typeof vt === 'number' ? Math.round(vt * 10) / 10 : null,
+      vid: curVid
     }, '*');
   }
   if (appWindow()) appWindow().postMessage({ type: 'fls-follow-hello' }, '*');
@@ -840,7 +844,9 @@
       }
       seekStep(readings, tickStart, tickYt);
       NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = liveText(n, stable[n]); });
-      sendToApp(stable);
+      // the position is trustworthy only if the player did not jump while we were reading the frame
+      var vtOk = cropTab && curVid && ytDur > 0 && !seekJob && Math.abs(ytTime - tickYt) <= (Date.now() - tickStart) / 1000 * 2.5 + 0.8;
+      sendToApp(stable, vtOk ? tickYt : null);
       var logEl = $('log');
       logEl.textContent = (logEl.textContent.indexOf('(読み取り') === 0 ? '' : logEl.textContent + '\n') + line;
       var lines = logEl.textContent.split('\n'); if (lines.length > 60) logEl.textContent = lines.slice(-60).join('\n');

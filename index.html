@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:24</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:32</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3301,7 +3301,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       followLists = [];
       followNowRow = null;
       followPending = null;
-      followGuard = null;
+      followGuard = null; followAnch = [];
       followFlat = followBuildFlat(gameQuartersData);
       gameQuartersData.forEach(function (q, qi) {
         followRows[qi] = [];
@@ -3368,8 +3368,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // ===== 映像に追従(試験機能) =====
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
-    var followRows = [], followLists = [], followFlat = [], followGuard = null;
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261110a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var followRows = [], followLists = [], followFlat = [], followGuard = null, followAnch = [], followAnchVid = null;
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261111a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
@@ -3489,15 +3489,42 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     function followGuardNew() { return { cur: null, curIdx: null, at: 0, anchor: null, streak: 0 }; }
     // returns { kind: 'near' | 'wait' | 'jump', have, need }; the caller calls followGuardAccept once it really moves
     // strong: the score is a real score of this game and agrees with the clock and period (three readings that fit the game data), so fewer confirmations are needed
-    function followGuardStep(st, idx, abs, now, strong) {
+    function followGuardStep(st, idx, abs, now, strong, contradict) {
       var near = st.cur != null && (Math.abs(idx - st.curIdx) <= 3 || Math.abs(abs - st.cur) <= 25 + 3 * Math.max(0, now - st.at) / 1000);
       if (near) { st.anchor = null; st.streak = 0; return { kind: 'near' }; }
       if (st.anchor != null && Math.abs(abs - st.anchor) <= 15) st.streak++;
       else { st.anchor = abs; st.streak = 1; }
-      var need = strong ? 2 : (st.cur == null ? 3 : 5);
+      var need = (strong ? 2 : (st.cur == null ? 3 : 5)) + (contradict ? 3 : 0);
       return { kind: st.streak >= need ? 'jump' : 'wait', have: st.streak, need: need };
     }
     function followGuardAccept(st, idx, abs, now) { st.cur = abs; st.curIdx = idx; st.at = now; st.anchor = null; st.streak = 0; }
+    // Video timeline check. Game time never runs backwards while the video plays forward, and never advances
+    // faster than the video does. Strong readings are remembered as {vt: video seconds, abs: game seconds};
+    // a new reading is then checked against every remembered point.
+    var FOLLOW_ANCHOR_SLACK = 15;
+    function followAnchorConflict(a, vt, abs) {
+      var dv = vt - a.vt, da = abs - a.abs, S = FOLLOW_ANCHOR_SLACK;
+      return dv >= 0 ? (da < -S || da > dv + S) : (da > S || da < dv - S);
+    }
+    // contradicts: the reading cannot be right given the remembered points; tight: the points pin it to a narrow window and it sits inside
+    function followAnchorCheck(anch, vt, abs) {
+      var lo = -Infinity, hi = Infinity, S = FOLLOW_ANCHOR_SLACK;
+      for (var i = 0; i < anch.length; i++) {
+        var a = anch[i], dv = vt - a.vt;
+        if (dv >= 0) { lo = Math.max(lo, a.abs - S); hi = Math.min(hi, a.abs + dv + S); }
+        else { hi = Math.min(hi, a.abs + S); lo = Math.max(lo, a.abs + dv - S); }
+      }
+      var inside = abs >= lo && abs <= hi;
+      return { contradicts: !inside, tight: inside && isFinite(lo) && isFinite(hi) && hi - lo <= 90 };
+    }
+    function followAnchorAdd(anch, vt, abs) {
+      for (var i = anch.length - 1; i >= 0; i--) {
+        if (Math.abs(anch[i].vt - vt) < 1 || followAnchorConflict(anch[i], vt, abs)) anch.splice(i, 1);
+      }
+      anch.push({ vt: vt, abs: abs });
+      anch.sort(function (x, y) { return x.vt - y.vt; });
+      if (anch.length > 1500) { for (var j = anch.length - 2; j >= 0; j -= 2) anch.splice(j, 1); }
+    }
     // </follow-logic>
 
     function followSetStatus(t) { document.getElementById('followStatus').textContent = t; }
@@ -3528,6 +3555,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         (score ? score[0] + '-' + score[1] : '?');
       var idx = followLocate(followFlat, rd);
       var strong = !!(rd.score && rd.sec != null && followLocate(followFlat, rd, true) != null);
+      var readSec = rd.sec;
       // Misread digits (7 as 1, 5 as 3/9) make the score or clock contradict the game data. If the reading does not fit,
       // try the reader's single/double-digit alternatives and take the cheapest one that fits both score and clock.
       if (rd.score && rd.sec != null && d.alts && followLocate(followFlat, rd, true) == null) {
@@ -3542,7 +3570,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         for (var ci = 0; ci < cands.length && ci < 600; ci++) {
           var hit = followLocate(followFlat, { qi: rd.qi, sec: cands[ci].sec, score: cands[ci].score }, true);
           if (hit != null) {
-            idx = hit; strong = true;
+            idx = hit; strong = true; readSec = cands[ci].sec;
             reading += '(補正: ' + Math.floor(cands[ci].sec / 60) + ':' + String(cands[ci].sec % 60).padStart(2, '0') + ' / ' + cands[ci].score[0] + '-' + cands[ci].score[1] + ')';
             break;
           }
@@ -3557,13 +3585,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var note = '';
       if (!followHeld) {
         if (!followGuard) followGuard = followGuardNew();
-        var now = Date.now(), abs = followAbsTime(f), g = followGuardStep(followGuard, idx, abs, now, strong);
+        var now = Date.now(), abs = followAbsTime(f);
+        // where the game clock says we are (not the play's own time), for the video timeline check
+        var absRead = readSec != null ? (f.qi < 4 ? f.qi * 600 + 600 : 2400 + (f.qi - 4) * 300 + 300) - readSec : abs;
+        var vt = typeof d.vt === 'number' && isFinite(d.vt) ? d.vt : null;
+        if (d.vid !== followAnchVid) { followAnch = []; followAnchVid = d.vid || null; }
+        var chk = vt != null && followAnch.length ? followAnchCheck(followAnch, vt, absRead) : null;
+        var supported = !!(chk && chk.tight); // the video timeline pins this reading, so it counts as strong
+        var g = followGuardStep(followGuard, idx, abs, now, strong || supported, !!(chk && chk.contradicts));
+        var remember = function () { if (vt != null && (strong || supported)) followAnchorAdd(followAnch, vt, absRead); };
         if (g.kind === 'near') {
-          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); } // move only after two identical readings in a row
+          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); remember(); } // move only after two identical readings in a row
         } else if (g.kind === 'jump') {
-          followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now);
+          followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); remember();
         } else {
-          note = '(大きく離れた読み取りです' + (strong ? '' : '。得点が合わないため慎重に') + '。確認中 ' + g.have + '/' + g.need + ')';
+          note = '(大きく離れた読み取りです' + (chk && chk.contradicts ? '。映像の流れと合わないため慎重に' : (strong || supported ? '' : '。得点が合わないため慎重に')) + '。確認中 ' + g.have + '/' + g.need + ')';
         }
       }
       followPending = idx;
