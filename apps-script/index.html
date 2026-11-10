@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:39</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:57</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3590,14 +3590,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         var absRead = readSec != null ? (f.qi < 4 ? f.qi * 600 + 600 : 2400 + (f.qi - 4) * 300 + 300) - readSec : abs;
         var vt = typeof d.vt === 'number' && isFinite(d.vt) ? d.vt : null;
         if (d.vid !== followAnchVid) { followAnch = []; followAnchVid = d.vid || null; }
-        var chk = vt != null && followAnch.length ? followAnchCheck(followAnch, vt, absRead) : null;
+        var chk = vt != null && followAnch.length ? followAnchorCheck(followAnch, vt, absRead) : null;
         var supported = !!(chk && chk.tight); // the video timeline pins this reading, so it counts as strong
-        var g = followGuardStep(followGuard, idx, abs, now, strong || supported, !!(chk && chk.contradicts));
+        var g = followGuardStep(followGuard, idx, absRead, now, strong || supported, !!(chk && chk.contradicts));
         var remember = function () { if (vt != null && d.full !== false && (strong || supported)) followAnchorAdd(followAnch, vt, absRead); };
         if (g.kind === 'near') {
-          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); remember(); } // move only after two identical readings in a row
+          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, absRead, now); remember(); } // move only after two identical readings in a row
         } else if (g.kind === 'jump') {
-          followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); remember();
+          followApplyIdx(idx); followGuardAccept(followGuard, idx, absRead, now); remember();
         } else {
           note = '(大きく離れた読み取りです' + (chk && chk.contradicts ? '。映像の流れと合わないため慎重に' : (strong || supported ? '' : '。得点が合わないため慎重に')) + '。確認中 ' + g.have + '/' + g.need + ')';
         }
