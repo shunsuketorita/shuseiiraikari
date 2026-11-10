@@ -33,6 +33,7 @@
   #ytFrame { width: 100%; aspect-ratio: 16 / 11; border: 0; border-radius: 8px; background: #000; display: block; }
   #ytShield { position: absolute; inset: 0; cursor: pointer; }
   #ytCtl { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; }
+  #ytRates { display: inline-flex; gap: 2px; margin-left: 4px; }
   #ytCtl button, #ytCtl select { padding: 4px 8px; font-size: 12px; }
   #ytCtl .hint { font-size: 11px; color: #888; margin-left: 4px; }
   #ytSeekRow { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
@@ -45,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-02i(拡大率の自動化)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-10a(速度ボタン)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -85,8 +86,8 @@
       <button data-yt="toggle" class="primary" id="ytToggle">再生/停止</button>
       <button data-yt="step:1">コマ▶</button><button data-yt="seek:1">1秒</button><button data-yt="seek:5">5秒⏩</button>
       <button id="ytMuteBtn" title="音の入/切">音: 入</button>
-      <select id="ytRate" title="再生速度"><option value="0.25">0.25倍</option><option value="0.5">0.5倍</option><option value="1" selected>1倍</option><option value="1.5">1.5倍</option><option value="2">2倍</option></select>
-      <span class="hint">キー: スペース=再生/停止 ←→=5秒 j l=10秒 , .=1コマ</span>
+      <span id="ytRates" title="再生速度"><button data-rate="0.25">0.25×</button><button data-rate="0.5">0.5×</button><button data-rate="1" class="primary">1×</button><button data-rate="1.5">1.5×</button><button data-rate="2">2×</button></span>
+      <span class="hint">キー: スペース=再生/停止 ←→=5秒 j l=10秒 , .=1コマ [ ]=速度</span>
     </div>
   </div>
   <div id="readout">
@@ -363,6 +364,7 @@
       if (typeof info.currentTime === 'number') ytTime = info.currentTime;
       if (typeof info.playerState === 'number') { ytState = info.playerState; ytApiState = info.playerState; }
       if (typeof info.muted === 'boolean') { ytMuted = info.muted; $('ytMuteBtn').textContent = ytMuted ? '音: 切' : '音: 入'; }
+      if (typeof info.playbackRate === 'number') ytRateShow(info.playbackRate);
       if (typeof info.duration === 'number' && info.duration > 0) ytDur = info.duration;
       ytShowTime();
     }
@@ -389,11 +391,25 @@
     if (b) ytAction(b.getAttribute('data-yt'));
   });
   $('ytMuteBtn').addEventListener('click', function () { ytCmd(ytMuted ? 'unMute' : 'mute'); });
-  $('ytRate').addEventListener('change', function () { ytCmd('setPlaybackRate', [+$('ytRate').value]); });
+  var YT_RATES = [0.25, 0.5, 1, 1.5, 2], ytRateNow = 1;
+  function ytRateShow(r) {
+    ytRateNow = r;
+    [].forEach.call($('ytRates').children, function (b) { b.classList.toggle('primary', Math.abs(+b.getAttribute('data-rate') - r) < 0.01); });
+  }
+  function ytRateSet(r) { ytCmd('setPlaybackRate', [r]); ytRateShow(r); }
+  $('ytRates').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-rate]');
+    if (b) ytRateSet(+b.getAttribute('data-rate'));
+  });
   window.addEventListener('keydown', function (e) {
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var a = null;
+    if (e.key === '[' || e.key === ']') {
+      var i = YT_RATES.reduce(function (bi, v, j) { return Math.abs(v - ytRateNow) < Math.abs(YT_RATES[bi] - ytRateNow) ? j : bi; }, 0);
+      e.preventDefault(); ytRateSet(YT_RATES[Math.max(0, Math.min(YT_RATES.length - 1, i + (e.key === ']' ? 1 : -1)))]);
+      return;
+    }
     if (e.key === ' ' || e.key === 'k') a = 'toggle';
     else if (e.key === 'ArrowLeft') a = 'seek:-5';
     else if (e.key === 'ArrowRight') a = 'seek:5';
