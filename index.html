@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:19</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:24</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3488,12 +3488,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     function followGuardNew() { return { cur: null, curIdx: null, at: 0, anchor: null, streak: 0 }; }
     // returns { kind: 'near' | 'wait' | 'jump', have, need }; the caller calls followGuardAccept once it really moves
-    function followGuardStep(st, idx, abs, now) {
+    // strong: the score is a real score of this game and agrees with the clock and period (three readings that fit the game data), so fewer confirmations are needed
+    function followGuardStep(st, idx, abs, now, strong) {
       var near = st.cur != null && (Math.abs(idx - st.curIdx) <= 3 || Math.abs(abs - st.cur) <= 25 + 3 * Math.max(0, now - st.at) / 1000);
       if (near) { st.anchor = null; st.streak = 0; return { kind: 'near' }; }
       if (st.anchor != null && Math.abs(abs - st.anchor) <= 15) st.streak++;
       else { st.anchor = abs; st.streak = 1; }
-      var need = st.cur == null ? 3 : 4;
+      var need = strong ? 2 : (st.cur == null ? 3 : 5);
       return { kind: st.streak >= need ? 'jump' : 'wait', have: st.streak, need: need };
     }
     function followGuardAccept(st, idx, abs, now) { st.cur = abs; st.curIdx = idx; st.at = now; st.anchor = null; st.streak = 0; }
@@ -3526,6 +3527,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         (sec != null ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '?') + ' / ' +
         (score ? score[0] + '-' + score[1] : '?');
       var idx = followLocate(followFlat, rd);
+      var strong = !!(rd.score && rd.sec != null && followLocate(followFlat, rd, true) != null);
       // Misread digits (7 as 1, 5 as 3/9) make the score or clock contradict the game data. If the reading does not fit,
       // try the reader's single/double-digit alternatives and take the cheapest one that fits both score and clock.
       if (rd.score && rd.sec != null && d.alts && followLocate(followFlat, rd, true) == null) {
@@ -3540,7 +3542,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         for (var ci = 0; ci < cands.length && ci < 600; ci++) {
           var hit = followLocate(followFlat, { qi: rd.qi, sec: cands[ci].sec, score: cands[ci].score }, true);
           if (hit != null) {
-            idx = hit;
+            idx = hit; strong = true;
             reading += '(補正: ' + Math.floor(cands[ci].sec / 60) + ':' + String(cands[ci].sec % 60).padStart(2, '0') + ' / ' + cands[ci].score[0] + '-' + cands[ci].score[1] + ')';
             break;
           }
@@ -3555,13 +3557,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       var note = '';
       if (!followHeld) {
         if (!followGuard) followGuard = followGuardNew();
-        var now = Date.now(), abs = followAbsTime(f), g = followGuardStep(followGuard, idx, abs, now);
+        var now = Date.now(), abs = followAbsTime(f), g = followGuardStep(followGuard, idx, abs, now, strong);
         if (g.kind === 'near') {
           if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); } // move only after two identical readings in a row
         } else if (g.kind === 'jump') {
           followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now);
         } else {
-          note = '(大きく離れた読み取りです。誤読を避けるため確認中 ' + g.have + '/' + g.need + ')';
+          note = '(大きく離れた読み取りです' + (strong ? '' : '。得点が合わないため慎重に') + '。確認中 ' + g.have + '/' + g.need + ')';
         }
       }
       followPending = idx;
