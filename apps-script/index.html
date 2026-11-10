@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:32</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:39</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3369,7 +3369,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [], followGuard = null, followAnch = [], followAnchVid = null;
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261111a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261111b'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
@@ -3593,7 +3593,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         var chk = vt != null && followAnch.length ? followAnchCheck(followAnch, vt, absRead) : null;
         var supported = !!(chk && chk.tight); // the video timeline pins this reading, so it counts as strong
         var g = followGuardStep(followGuard, idx, abs, now, strong || supported, !!(chk && chk.contradicts));
-        var remember = function () { if (vt != null && (strong || supported)) followAnchorAdd(followAnch, vt, absRead); };
+        var remember = function () { if (vt != null && d.full !== false && (strong || supported)) followAnchorAdd(followAnch, vt, absRead); };
         if (g.kind === 'near') {
           if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, abs, now); remember(); } // move only after two identical readings in a row
         } else if (g.kind === 'jump') {
@@ -3613,7 +3613,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (d.type === 'fls-follow') followHandleReading(d);
       if (d.type === 'fls-follow-state') {
         var msg = d.state === 'nocapture' ? '読み取りウィンドウで映像の共有がまだ始まっていません(「このタブの動画部分を読み取り対象にする」を押してください)'
-          : d.state === 'paused' ? '映像が一時停止中のため、読み取りを止めています' : '';
+          : d.state === 'paused' ? '映像が一時停止中のため、読み取りを止めています'
+          : d.state === 'noboard' ? '映像にスコアボードが映っていません(リプレイ・CMなど)。映ったら追従を続けます' : '';
         if (msg !== followStateMsg) { followStateMsg = msg; followBarRender(); }
       }
       if (d.type === 'fls-seek-status') {

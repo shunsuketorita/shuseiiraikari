@@ -46,7 +46,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-11a(再生位置の照合)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-11b(スコアボード判定)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -340,7 +340,7 @@
 
   // ---- player controls (YouTube iframe API over postMessage; the embed's own keys are unreliable) ----
   var YT_ORIGIN = 'https://www.youtube.com';
-  var curVid = null;
+  var curVid = null, boardMisses = 0;
   var ytTime = 0, ytState = -1, ytApiState = -1, ytMuted = false, ytDur = 0, ytScrub = false, ocrWake = 0, pausedNoted = false;
   function fmtT(t) { t = Math.max(0, Math.floor(t)); var h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0'); }
   function ytShowTime() {
@@ -586,7 +586,7 @@
     $('conn').style.color = appWindow() ? '#2f9e44' : '#c92a2a';
   }
   // vt: the video position this frame came from (seconds) — lets the app check a reading against the video timeline
-  function sendToApp(readings, vt) {
+  function sendToApp(readings, vt, full) {
     var app = appWindow();
     updateConn();
     if (!app) return;
@@ -598,13 +598,14 @@
       score: score ? [score.home, score.away] : null,
       alts: altsFor(clock, score),
       vt: typeof vt === 'number' ? Math.round(vt * 10) / 10 : null,
-      vid: curVid
+      vid: curVid,
+      full: full !== false
     }, '*');
   }
   if (appWindow()) appWindow().postMessage({ type: 'fls-follow-hello' }, '*');
   // tell the app what this window is doing, so it can show "not sharing yet" / "paused" next to the play list
   setInterval(function () {
-    var state = !source ? 'nocapture' : (cropTab && ytState === 2 && !seekJob && Date.now() > ocrWake ? 'paused' : 'reading');
+    var state = !source ? 'nocapture' : (cropTab && ytState === 2 && !seekJob && Date.now() > ocrWake ? 'paused' : (boardMisses >= 3 ? 'noboard' : 'reading'));
     if (appWindow()) appWindow().postMessage({ type: 'fls-follow-state', state: state }, '*');
   }, 2000);
   updateConn();
@@ -837,16 +838,26 @@
         show(name, res, parsed);
         line += '  ' + LABELS[name] + '="' + (res ? res.text : '-') + '" → ' + (parsed ? JSON.stringify(parsed) : '×');
       }
-      var stable = stabilize(readings);
-      if (stable.period && stable.clock) {
-        var eo = elapsedOf(stable.period.q, stable.clock.min * 60 + stable.clock.sec);
-        if (eo != null) { obs.push({ t: tickYt, e: eo }); if (obs.length > 400) obs.shift(); }
-      }
+      // period, clock and score are always on screen together: with two or three readable the board is there (a missing one is a
+      // misread, filled from recent readings); with none or one it is a replay/commercial/close-up and whatever was "read" is noise
+      var nRead = NAMES.filter(function (n) { return readings[n]; }).length, boardSeen = nRead >= 2;
       seekStep(readings, tickStart, tickYt);
-      NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = liveText(n, stable[n]); });
-      // the position is trustworthy only if the player did not jump while we were reading the frame
-      var vtOk = cropTab && curVid && ytDur > 0 && !seekJob && Math.abs(ytTime - tickYt) <= (Date.now() - tickStart) / 1000 * 2.5 + 0.8;
-      sendToApp(stable, vtOk ? tickYt : null);
+      if (boardSeen) {
+        boardMisses = 0;
+        var stable = stabilize(readings);
+        if (stable.period && stable.clock) {
+          var eo = elapsedOf(stable.period.q, stable.clock.min * 60 + stable.clock.sec);
+          if (eo != null) { obs.push({ t: tickYt, e: eo }); if (obs.length > 400) obs.shift(); }
+        }
+        NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = liveText(n, stable[n]); });
+        // the position is trustworthy only if the player did not jump while we were reading the frame
+        var vtOk = cropTab && curVid && ytDur > 0 && !seekJob && Math.abs(ytTime - tickYt) <= (Date.now() - tickStart) / 1000 * 2.5 + 0.8;
+        sendToApp(stable, vtOk ? tickYt : null, nRead === 3);
+      } else {
+        boardMisses++;
+        NAMES.forEach(function (n) { $(LIVE_IDS[n]).textContent = '-'; });
+        line += '  (スコアボードなし: 読み取りを使いません)';
+      }
       var logEl = $('log');
       logEl.textContent = (logEl.textContent.indexOf('(読み取り') === 0 ? '' : logEl.textContent + '\n') + line;
       var lines = logEl.textContent.split('\n'); if (lines.length > 60) logEl.textContent = lines.slice(-60).join('\n');
