@@ -41,12 +41,17 @@
   #readout { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: baseline; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; padding: 6px 12px; margin-top: 4px; max-width: calc((100vh - 300px) * 16 / 11); min-width: 320px; }
   #readout .ro { display: flex; gap: 8px; align-items: baseline; }
   #readout .lab { font-size: 12px; color: #666; }
+  #oncourt { flex: 1 1 360px; font-size: 12px; line-height: 1.55; align-self: center; }
+  #oncourt .oc-team { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+  #oncourt .oc-name { font-weight: 700; color: #3b5bdb; min-width: 3em; }
+  #oncourt .oc-p { white-space: nowrap; }
+  #oncourt .oc-p b { font-family: ui-monospace, Menlo, monospace; }
   #readout .val { font-size: 22px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
   #readout #status { flex: 1 1 100%; font-size: 12px; color: #3b5bdb; word-break: break-all; min-height: 0; }
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-11b(スコアボード判定)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-16a(オンコート表示)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -94,6 +99,7 @@
     <div class="ro"><span class="lab">ピリオド</span><span class="val" id="liveP">-</span></div>
     <div class="ro"><span class="lab">時計</span><span class="val" id="liveC">-</span></div>
     <div class="ro"><span class="lab">スコア</span><span class="val" id="liveS">-</span></div>
+    <div id="oncourt" style="display:none;"></div>
     <div id="status"></div>
   </div>
 </div>
@@ -692,6 +698,25 @@
     seekSay('映像を探しています… いま ' + labelOf(eNow) + ' → 目標 ' + labelOf(job.e) + '(' + job.iter + '回目・映像: ' + stateLabel() + ')');
     seekTo(tickYt + d);
   }
+  // who is on the court per the play-by-play, sent by the app whenever the followed position changes
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.type !== 'fls-oncourt' || e.source !== window.opener || !Array.isArray(d.teams)) return;
+    var box = $('oncourt');
+    while (box.firstChild) box.removeChild(box.firstChild);
+    d.teams.slice(0, 2).forEach(function (t) {
+      var line = document.createElement('div'); line.className = 'oc-team';
+      var nm = document.createElement('span'); nm.className = 'oc-name'; nm.textContent = String(t.name || ''); line.appendChild(nm);
+      (Array.isArray(t.players) ? t.players : []).forEach(function (p) {
+        var sp = document.createElement('span'); sp.className = 'oc-p';
+        var b = document.createElement('b'); b.textContent = String(p.n || ''); sp.appendChild(b);
+        sp.appendChild(document.createTextNode(' ' + String(p.name || '')));
+        line.appendChild(sp);
+      });
+      box.appendChild(line);
+    });
+    box.style.display = d.teams.length ? '' : 'none';
+  });
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (!d || d.type !== 'fls-seek' || e.source !== window.opener) return;

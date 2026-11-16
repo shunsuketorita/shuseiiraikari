@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-11 01:57</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-16 22:34</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3369,7 +3369,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [], followGuard = null, followAnch = [], followAnchVid = null;
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261111b'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261116a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
@@ -3529,10 +3529,46 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     function followSetStatus(t) { document.getElementById('followStatus').textContent = t; }
 
+    // who is on the court at a play: replay every プレイヤーイン/アウト from the start of the game (lineups carry over between quarters).
+    // If the play itself is part of a substitution batch, the whole batch counts so the lineup is the complete five.
+    var FOLLOW_SUB_RE = /^(#\S+)\s+(.+?)\s+プレイヤー(イン|アウト)\s*$/;
+    function followSubOf(i) {
+      var f = followFlat[i], p = gameQuartersData[f.qi].plays[f.pi], m = FOLLOW_SUB_RE.exec(p.desc || '');
+      return m ? { team: p.team, num: m[1], name: m[2], inn: m[3] === 'イン', qi: f.qi, time: p.time } : null;
+    }
+    function followOnCourt(idx) {
+      var end = idx, first = followSubOf(idx);
+      if (first) { var k = idx; while (k < followFlat.length) { var s2 = followSubOf(k); if (!s2 || s2.qi !== first.qi || s2.time !== first.time) break; k++; } end = k; }
+      var on = {}, order = [];
+      for (var i = 0; i < end; i++) {
+        var sub = followSubOf(i);
+        if (!sub) continue;
+        if (!on[sub.team]) { on[sub.team] = {}; order.push(sub.team); }
+        if (sub.inn) on[sub.team][sub.num] = sub.name; else delete on[sub.team][sub.num];
+      }
+      var home = homeNameInput.value.trim(), away = awayNameInput.value.trim();
+      var names = [home, away].filter(function (n) { return n && on[n]; });
+      order.forEach(function (n) { if (names.indexOf(n) < 0) names.push(n); });
+      return names.map(function (n) {
+        var nums = Object.keys(on[n]).sort(function (a, b) { return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10); });
+        return { name: n, players: nums.map(function (k) { return { n: k, name: on[n][k] }; }) };
+      });
+    }
+    var followOnCourtSent = '';
+    function followSendOnCourt(idx) {
+      try {
+        if (!followReaderWin || followReaderWin.closed) return;
+        var teams = followOnCourt(idx), key = JSON.stringify(teams);
+        if (key === followOnCourtSent) return;
+        followOnCourtSent = key;
+        followReaderWin.postMessage({ type: 'fls-oncourt', teams: teams }, new URL(FOLLOW_READER_URL).origin);
+      } catch (err) { /* the lineup is a nicety: never let it stop following */ }
+    }
     function followApplyIdx(idx) {
       var f = followFlat[idx];
       var row = followRows[f.qi] && followRows[f.qi][f.pi], list = followLists[f.qi];
       if (!row || !list) return;
+      followSendOnCourt(idx);
       if (followNowRow && followNowRow !== row) followNowRow.classList.remove('now');
       row.classList.add('now');
       followNowRow = row;
@@ -3609,7 +3645,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     window.addEventListener('message', function (e) {
       var d = e.data;
       if (!d || !followReaderWin || e.source !== followReaderWin || e.origin !== new URL(FOLLOW_READER_URL).origin) return;
-      if (d.type === 'fls-follow-hello') { followSetStatus('読み取りウィンドウと接続しました。映像のピリオド・時計・スコアを囲んでください。'); return; }
+      if (d.type === 'fls-follow-hello') { followOnCourtSent = ''; followSetStatus('読み取りウィンドウと接続しました。映像のピリオド・時計・スコアを囲んでください。'); return; }
       if (d.type === 'fls-follow') followHandleReading(d);
       if (d.type === 'fls-follow-state') {
         var msg = d.state === 'nocapture' ? '読み取りウィンドウで映像の共有がまだ始まっていません(「このタブの動画部分を読み取り対象にする」を押してください)'
