@@ -65,7 +65,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-17a(軽量化)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-17b(速度キー)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -106,7 +106,7 @@
       <button data-yt="step:1">コマ▶</button><button data-yt="seek:1">1秒</button><button data-yt="seek:5">5秒⏩</button>
       <button id="ytMuteBtn" title="音の入/切">音: 入</button>
       <span id="ytRates" title="再生速度"><button data-rate="0.25">0.25×</button><button data-rate="0.5">0.5×</button><button data-rate="1" class="primary">1×</button><button data-rate="1.5">1.5×</button><button data-rate="2">2×</button></span>
-      <span class="hint">キー: スペース=再生/停止 ←→=5秒 j l=10秒 , .=1コマ [ ]=速度</span>
+      <span class="hint">キー: スペース=再生/停止 ←→=5秒 j l=10秒 , .=1コマ Shift+, Shift+.=速度</span>
     </div>
   </div>
   <div id="readout">
@@ -431,9 +431,11 @@
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var a = null;
-    if (e.key === '[' || e.key === ']') {
+    // Shift+, slower and Shift+. faster (same as YouTube); judged by the physical key so it works on any keyboard layout
+    var slower = e.shiftKey && (e.code === 'Comma' || e.key === '<'), faster = e.shiftKey && (e.code === 'Period' || e.key === '>');
+    if (slower || faster) {
       var i = YT_RATES.reduce(function (bi, v, j) { return Math.abs(v - ytRateNow) < Math.abs(YT_RATES[bi] - ytRateNow) ? j : bi; }, 0);
-      e.preventDefault(); ytRateSet(YT_RATES[Math.max(0, Math.min(YT_RATES.length - 1, i + (e.key === ']' ? 1 : -1)))]);
+      e.preventDefault(); ytRateSet(YT_RATES[Math.max(0, Math.min(YT_RATES.length - 1, i + (faster ? 1 : -1)))]);
       return;
     }
     if (e.key === ' ' || e.key === 'k') a = 'toggle';
