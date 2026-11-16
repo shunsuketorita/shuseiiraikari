@@ -464,7 +464,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p>映像確認で見つかった記録ミスを、スプレッドシートに貼り付けられる行にすばやく作成します。</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-16 22:34</span>
+      <span id="lastEditedLabel" style="font-size:11px;color:var(--text-faint);white-space:nowrap;">最終更新: 2026-11-16 22:44</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="theme-toggle" id="themeToggle" type="button">画面の色を切り替え</button>
         <span id="headerMetaWrap" style="display:none;align-items:center;gap:5px;">
@@ -3369,7 +3369,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     // Screen capture is blocked inside the Apps Script sandbox (display-capture permissions policy), so
     // a separate page on GitHub Pages does the capture + OCR and posts the readings back to this window.
     var followRows = [], followLists = [], followFlat = [], followGuard = null, followAnch = [], followAnchVid = null;
-    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261116a'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
+    var FOLLOW_READER_URL = 'https://shunsuketorita.github.io/shuseiiraikari/follow-reader.html?v=20261116b'; // bump ?v= whenever follow-reader.html changes (Pages caches for 10 min)
     var followReaderWin = null, followPending = null, followNowRow = null, followHeld = false, followSeekMsg = '', followSeekTimer = null, followStateMsg = '', followWasOpen = false;
 
     function followViewMode() { return document.getElementById('followSeek').checked && !!followReaderWin && !followReaderWin.closed; }
@@ -3555,20 +3555,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       });
     }
     var followOnCourtSent = '';
-    function followSendOnCourt(idx) {
+    // fx: the move is ordinary following (not a jump), so a change of lineup is a real substitution worth highlighting
+    function followSendOnCourt(idx, fx) {
       try {
         if (!followReaderWin || followReaderWin.closed) return;
         var teams = followOnCourt(idx), key = JSON.stringify(teams);
         if (key === followOnCourtSent) return;
         followOnCourtSent = key;
-        followReaderWin.postMessage({ type: 'fls-oncourt', teams: teams }, new URL(FOLLOW_READER_URL).origin);
+        followReaderWin.postMessage({ type: 'fls-oncourt', teams: teams, fx: !!fx }, new URL(FOLLOW_READER_URL).origin);
       } catch (err) { /* the lineup is a nicety: never let it stop following */ }
     }
-    function followApplyIdx(idx) {
+    function followApplyIdx(idx, fx) {
       var f = followFlat[idx];
       var row = followRows[f.qi] && followRows[f.qi][f.pi], list = followLists[f.qi];
       if (!row || !list) return;
-      followSendOnCourt(idx);
+      followSendOnCourt(idx, fx);
       if (followNowRow && followNowRow !== row) followNowRow.classList.remove('now');
       row.classList.add('now');
       followNowRow = row;
@@ -3631,7 +3632,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         var g = followGuardStep(followGuard, idx, absRead, now, strong || supported, !!(chk && chk.contradicts));
         var remember = function () { if (vt != null && d.full !== false && (strong || supported)) followAnchorAdd(followAnch, vt, absRead); };
         if (g.kind === 'near') {
-          if (idx === followPending) { followApplyIdx(idx); followGuardAccept(followGuard, idx, absRead, now); remember(); } // move only after two identical readings in a row
+          if (idx === followPending) { followApplyIdx(idx, true); followGuardAccept(followGuard, idx, absRead, now); remember(); } // move only after two identical readings in a row
         } else if (g.kind === 'jump') {
           followApplyIdx(idx); followGuardAccept(followGuard, idx, absRead, now); remember();
         } else {

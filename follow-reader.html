@@ -42,16 +42,30 @@
   #readout .ro { display: flex; gap: 8px; align-items: baseline; }
   #readout .lab { font-size: 12px; color: #666; }
   #oncourt { flex: 1 1 360px; font-size: 12px; line-height: 1.55; align-self: center; }
-  #oncourt .oc-team { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
-  #oncourt .oc-name { font-weight: 700; color: #3b5bdb; min-width: 3em; }
-  #oncourt .oc-p { white-space: nowrap; }
-  #oncourt .oc-p b { font-family: ui-monospace, Menlo, monospace; }
+  .main { position: relative; }
+  #ocSide { display: none; position: absolute; top: 0; box-sizing: border-box; padding: 8px 10px; background: #fff; border: 1px solid #dde1e6; border-radius: 10px; font-size: 14px; }
+  .oc-team { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+  .oc-name { font-weight: 700; color: #3b5bdb; min-width: 3em; }
+  .oc-p { white-space: nowrap; border-radius: 6px; padding: 0 4px; }
+  .oc-p b { font-family: ui-monospace, Menlo, monospace; }
+  #ocSide .oc-team { display: block; margin-bottom: 8px; }
+  #ocSide .oc-name { display: block; font-size: 12px; border-bottom: 1px solid #dde1e6; margin-bottom: 3px; padding-bottom: 2px; }
+  #ocSide .oc-p { display: block; font-size: 16px; line-height: 1.7; }
+  /* substitution effects: the player coming in flashes green with an IN tag; the one going out stays struck through in red, then fades */
+  .oc-p.oc-in { animation: ocIn 7s ease-out both; }
+  .oc-badge { display: inline-block; overflow: hidden; vertical-align: baseline; font-size: 10px; font-weight: 800; color: #fff; background: #2f9e44; border-radius: 4px; padding: 0 4px; margin-right: 4px; animation: ocBadge 7s linear both; }
+  .oc-p.oc-out { color: #c92a2a; text-decoration: line-through; animation: ocOut 7s ease-in both; overflow: hidden; }
+  @keyframes ocIn { 0% { background: #2f9e44; color: #fff; transform: scale(1.12); } 12% { transform: scale(1); } 55% { background: #d3f9d8; color: inherit; } 100% { background: transparent; color: inherit; } }
+  @keyframes ocBadge { 0%, 85% { opacity: 1; max-width: 3em; padding: 0 4px; margin-right: 4px; } 100% { opacity: 0; max-width: 0; padding: 0; margin-right: 0; } }
+  @keyframes ocOut { 0% { background: #ffe3e3; opacity: 1; max-height: 2.4em; } 70% { opacity: 1; max-height: 2.4em; } 100% { opacity: 0; max-height: 0; } }
+  #ocSide.oc-flash, #readout.oc-flash { animation: ocFlash 1.4s ease-out; }
+  @keyframes ocFlash { 0% { box-shadow: 0 0 0 3px #2f9e44; } 100% { box-shadow: 0 0 0 0 transparent; } }
   #readout .val { font-size: 22px; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
   #readout #status { flex: 1 1 100%; font-size: 12px; color: #3b5bdb; word-break: break-all; min-height: 0; }
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-16a(オンコート表示)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-16b(縦表示と交代演出)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -102,6 +116,7 @@
     <div id="oncourt" style="display:none;"></div>
     <div id="status"></div>
   </div>
+  <div id="ocSide"></div>
 </div>
 
 <details class="fold" style="margin-top:12px;">
@@ -698,24 +713,75 @@
     seekSay('映像を探しています… いま ' + labelOf(eNow) + ' → 目標 ' + labelOf(job.e) + '(' + job.iter + '回目・映像: ' + stateLabel() + ')');
     seekTo(tickYt + d);
   }
-  // who is on the court per the play-by-play, sent by the app whenever the followed position changes
+  // who is on the court per the play-by-play, sent by the app whenever the followed position changes.
+  // Shown as a column beside the video when there is room, otherwise as two lines in the readout. A substitution is
+  // marked for a few seconds: the player in flashes green with IN, the player out stays struck through in red.
+  var OC_FX_MS = 7000, ocTeams = [], ocMarks = {}, ocSide = false;
+  function ocKey(t, p) { return t.name + '|' + p.n; }
+  function ocBuild(box) {
+    while (box.firstChild) box.removeChild(box.firstChild);
+    var now = Date.now();
+    ocTeams.forEach(function (t) {
+      var line = document.createElement('div'); line.className = 'oc-team';
+      var nm = document.createElement('span'); nm.className = 'oc-name'; nm.textContent = String(t.name || ''); line.appendChild(nm);
+      var add = function (p, kind) {
+        var m = ocMarks[ocKey(t, p) + '|' + kind], sp = document.createElement('span'); sp.className = 'oc-p';
+        var live = m && now - m < OC_FX_MS;
+        if (live) { sp.className += ' oc-' + kind; sp.style.animationDelay = '-' + ((now - m) / 1000).toFixed(2) + 's'; }
+        if (live && kind === 'in') {
+          var bd = document.createElement('span'); bd.className = 'oc-badge'; bd.textContent = 'IN'; bd.style.animationDelay = sp.style.animationDelay; sp.appendChild(bd);
+        }
+        var b = document.createElement('b'); b.textContent = String(p.n || ''); sp.appendChild(b);
+        sp.appendChild(document.createTextNode(' ' + String(p.name || '') + (live && kind === 'out' ? '  OUT' : '')));
+        line.appendChild(sp);
+      };
+      (Array.isArray(t.players) ? t.players : []).forEach(function (p) { add(p, 'in'); });
+      (t.outs || []).forEach(function (p) { if (ocMarks[ocKey(t, p) + '|out'] && now - ocMarks[ocKey(t, p) + '|out'] < OC_FX_MS) add(p, 'out'); });
+      box.appendChild(line);
+    });
+  }
+  function ocRender() {
+    ocBuild($('oncourt')); ocBuild($('ocSide'));
+    ocLayout();
+  }
+  function ocLayout() {
+    var wrap = $('playerWrap'), side = $('ocSide'), inl = $('oncourt'), main = wrap.parentNode;
+    if (!ocTeams.length) { side.style.display = 'none'; inl.style.display = 'none'; return; }
+    var room = main.clientWidth - wrap.offsetWidth;
+    // wide gap between on/off so the video resizing itself (the inline lines are taller than the column) cannot make it flip back and forth
+    ocSide = wrap.style.display === 'block' && (ocSide ? room >= 120 : room >= 200);
+    inl.style.display = ocSide ? 'none' : '';
+    side.style.display = ocSide ? 'block' : 'none';
+    if (ocSide) { side.style.left = (wrap.offsetWidth + 12) + 'px'; side.style.width = Math.min(270, room - 16) + 'px'; }
+  }
+  window.addEventListener('resize', ocLayout);
+  setInterval(function () { if (ocTeams.length) { var now = Date.now(); if (Object.keys(ocMarks).some(function (k) { return now - ocMarks[k] < OC_FX_MS + 400; })) ocRender(); else ocLayout(); } }, 500);
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (!d || d.type !== 'fls-oncourt' || e.source !== window.opener || !Array.isArray(d.teams)) return;
-    var box = $('oncourt');
-    while (box.firstChild) box.removeChild(box.firstChild);
-    d.teams.slice(0, 2).forEach(function (t) {
-      var line = document.createElement('div'); line.className = 'oc-team';
-      var nm = document.createElement('span'); nm.className = 'oc-name'; nm.textContent = String(t.name || ''); line.appendChild(nm);
-      (Array.isArray(t.players) ? t.players : []).forEach(function (p) {
-        var sp = document.createElement('span'); sp.className = 'oc-p';
-        var b = document.createElement('b'); b.textContent = String(p.n || ''); sp.appendChild(b);
-        sp.appendChild(document.createTextNode(' ' + String(p.name || '')));
-        line.appendChild(sp);
+    var now = Date.now(), old = ocTeams, next = d.teams.slice(0, 2);
+    next.forEach(function (t) { t.outs = []; });
+    if (d.fx && old.length) {
+      var changed = false;
+      next.forEach(function (t) {
+        var prev = old.filter(function (o) { return o.name === t.name; })[0];
+        if (!prev) return;
+        var had = {}, has = {};
+        prev.players.forEach(function (p) { had[p.n] = p; });
+        t.players.forEach(function (p) { has[p.n] = p; });
+        t.players.forEach(function (p) { if (!had[p.n]) { ocMarks[ocKey(t, p) + '|in'] = now; changed = true; } });
+        prev.players.forEach(function (p) { if (!has[p.n]) { ocMarks[ocKey(t, p) + '|out'] = now; changed = true; } });
+        // keep recent outs on screen (also across a following change)
+        var outs = (prev.outs || []).filter(function (p) { return !has[p.n] && ocMarks[ocKey(t, p) + '|out'] && now - ocMarks[ocKey(t, p) + '|out'] < OC_FX_MS; });
+        prev.players.forEach(function (p) { if (!has[p.n]) outs.push(p); });
+        t.outs = outs;
       });
-      box.appendChild(line);
-    });
-    box.style.display = d.teams.length ? '' : 'none';
+      if (changed) {
+        [$('ocSide'), $('readout')].forEach(function (el) { el.classList.remove('oc-flash'); void el.offsetWidth; el.classList.add('oc-flash'); });
+      }
+    }
+    ocTeams = next;
+    ocRender();
   });
   window.addEventListener('message', function (e) {
     var d = e.data;
