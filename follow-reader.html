@@ -65,7 +65,7 @@
 </style>
 </head>
 <body>
-<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-16b(縦表示と交代演出)</span></h1>
+<h1>映像読み取りウィンドウ <span id="conn" style="font-size:12px;font-weight:400;margin-left:8px;"></span> <span style="font-size:11px;font-weight:400;color:#888;margin-left:6px;">版 2026-11-17a(軽量化)</span></h1>
 
 <div class="folds">
 <details class="fold">
@@ -119,7 +119,7 @@
   <div id="ocSide"></div>
 </div>
 
-<details class="fold" style="margin-top:12px;">
+<details class="fold" id="detailFold" style="margin-top:12px;">
   <summary>読み取りの詳細・範囲の調整(通常は不要)</summary>
   <div class="bar" style="margin-top:8px;">
     囲む領域:
@@ -210,13 +210,15 @@
 
   var usingDefaults = true;
   try { var saved = JSON.parse(localStorage.getItem(REG_KEY) || 'null'); if (saved) { regions = saved; usingDefaults = false; } } catch (e) {}
-  function saveRegions() { try { localStorage.setItem(REG_KEY, JSON.stringify(regions)); } catch (e) {} }
+  function saveRegions() { if (typeof dropSigs === 'function') dropSigs(); try { localStorage.setItem(REG_KEY, JSON.stringify(regions)); } catch (e) {} }
   function setStatus(s) { $('status').textContent = s; }
   function activeRegion() { return document.querySelector('input[name=reg]:checked').value; }
 
   function srcW() { return source ? (source.kind === 'video' ? video.videoWidth : source.el.naturalWidth) : 0; }
   function srcH() { return source ? (source.kind === 'video' ? video.videoHeight : source.el.naturalHeight) : 0; }
 
+  // the preview and the intermediate images live in the (usually closed) details panel: draw them only while it is open or being dragged on
+  function viewWanted() { return $('detailFold').open || !!dragging; }
   function renderView() {
     var w = srcW(), h = srcH();
     if (!w || !h) return;
@@ -297,6 +299,7 @@
   if (qImg) loadImageSrc(qImg);
 
   function stopCapture() {
+    if (typeof dropSigs === 'function') dropSigs();
     cropTab = false;
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     stream = null;
@@ -314,8 +317,9 @@
     await video.play();
     stream.getVideoTracks()[0].addEventListener('ended', stopCapture);
     source = { kind: 'video', el: video };
+    if (typeof dropSigs === 'function') dropSigs();
     clearInterval(previewTimer);
-    previewTimer = setInterval(renderView, 250);
+    previewTimer = setInterval(function () { if (viewWanted()) renderView(); }, 250);
     $('startCapture').disabled = true; $('stopCapture').disabled = false;
     $('setup').open = false;
     setStatus(label + ': ' + video.videoWidth + '×' + video.videoHeight);
@@ -458,7 +462,7 @@
   }
   window.addEventListener('resize', fitPlayer);
   document.addEventListener('toggle', fitPlayer, true);
-  setInterval(fitPlayer, 700);
+  setInterval(fitPlayer, 1500);
   setInterval(function () { if (document.activeElement === $('ytFrame')) { $('ytFrame').blur(); window.focus(); } }, 300);
 
   $('captureThisTab').addEventListener('click', async function () {
@@ -550,9 +554,11 @@
   async function readRegion(name, scaleOverride) {
     var pre = preprocess(name, scaleOverride);
     if (!pre) return null;
-    var dest = $(name + 'Proc');
-    dest.width = pre.canvas.width; dest.height = pre.canvas.height;
-    dest.getContext('2d').drawImage(pre.canvas, 0, 0);
+    if (viewWanted()) {
+      var dest = $(name + 'Proc');
+      dest.width = pre.canvas.width; dest.height = pre.canvas.height;
+      dest.getContext('2d').drawImage(pre.canvas, 0, 0);
+    }
     var wk = await ensureWorker();
     await wk.setParameters({
       tessedit_char_whitelist: name === 'period' ? '0123456789stndrhOT ' : (name === 'clock' ? '0123456789:. ' : '0123456789 '),
@@ -582,7 +588,7 @@
 
   var LIVE_IDS = { period: 'liveP', clock: 'liveC', score: 'liveS' };
   function show(name, res, parsed) {
-    showDetail(name, res, parsed);
+    if (viewWanted()) showDetail(name, res, parsed);
   }
   function showDetail(name, res, parsed) {
     $(name + 'Raw').textContent = res ? '"' + res.text + '"' : '(領域未設定)';
@@ -755,14 +761,14 @@
     if (ocSide) { side.style.left = (wrap.offsetWidth + 12) + 'px'; side.style.width = Math.min(270, room - 16) + 'px'; }
   }
   window.addEventListener('resize', ocLayout);
-  setInterval(function () { if (ocTeams.length) { var now = Date.now(); if (Object.keys(ocMarks).some(function (k) { return now - ocMarks[k] < OC_FX_MS + 400; })) ocRender(); else ocLayout(); } }, 500);
+  setInterval(ocLayout, 1500);
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (!d || d.type !== 'fls-oncourt' || e.source !== window.opener || !Array.isArray(d.teams)) return;
     var now = Date.now(), old = ocTeams, next = d.teams.slice(0, 2);
     next.forEach(function (t) { t.outs = []; });
+    var changed = false;
     if (d.fx && old.length) {
-      var changed = false;
       next.forEach(function (t) {
         var prev = old.filter(function (o) { return o.name === t.name; })[0];
         if (!prev) return;
@@ -782,6 +788,7 @@
     }
     ocTeams = next;
     ocRender();
+    if (changed) setTimeout(ocRender, OC_FX_MS + 150); // clear the effect marks once they have run out
   });
   window.addEventListener('message', function (e) {
     var d = e.data;
@@ -906,6 +913,26 @@
     return { res: pick.c.res, parsed: pick.c.parsed };
   }
 
+  // Period and score hardly ever change and the clock is the only thing moving most of the time: when a region looks the same as the
+  // last time it was read successfully, keep that reading instead of running the OCR again (re-read anyway every few ticks)
+  var sigCanvas = document.createElement('canvas'), sigCtx = null, sigs = {};
+  sigCanvas.width = 32; sigCanvas.height = 16;
+  function regionSig(name) {
+    var r = regions[name];
+    if (!r || !source) return null;
+    var w = srcW(), h = srcH();
+    if (!sigCtx) sigCtx = sigCanvas.getContext('2d', { willReadFrequently: true });
+    sigCtx.drawImage(source.el, r.x * w, r.y * h, r.w * w, r.h * h, 0, 0, 32, 16);
+    var d = sigCtx.getImageData(0, 0, 32, 16).data, out = new Uint8Array(512);
+    for (var i = 0, p = 0; i < d.length; i += 4, p++) out[p] = (d[i] * 3 + d[i + 1] * 6 + d[i + 2]) / 10;
+    return out;
+  }
+  function sigDiff(a, b) {
+    var t = 0;
+    for (var i = 0; i < a.length; i++) t += Math.abs(a[i] - b[i]);
+    return t / a.length;
+  }
+  var SIG_SAME = 4, SIG_MAX_REUSE = 8;
   async function tick(force) {
     if (busy || !source) return;
     // a paused video does not change and YouTube draws "more videos" over it: skip OCR until something moves
@@ -919,11 +946,19 @@
     if (problem) { setStatus(problem); return; }
     busy = true;
     try {
-      renderView();
+      if (viewWanted()) renderView();
       var line = new Date().toTimeString().slice(0, 8);
       var readings = {};
       for (var name of NAMES) {
+        var sig = regionSig(name), prev = sigs[name];
+        if (!force && sig && prev && prev.parsed && prev.reused < SIG_MAX_REUSE && sigDiff(sig, prev.sig) < SIG_SAME) {
+          prev.reused++;
+          readings[name] = prev.parsed;
+          line += '  ' + LABELS[name] + '=(前と同じ見た目: 再利用)';
+          continue;
+        }
         var best = await readBest(name), res = best.res, parsed = best.parsed;
+        sigs[name] = sig ? { sig: sig, parsed: parsed, reused: 0 } : null;
         readings[name] = parsed;
         if (res) { stats[name].total++; if (parsed) stats[name].ok++; }
         show(name, res, parsed);
@@ -961,6 +996,7 @@
   }
 
   $('runOnce').addEventListener('click', function () { tick(true); });
+  function dropSigs() { sigs = {}; }
   function applyAuto() {
     clearInterval(autoTimer);
     if ($('auto').checked) autoTimer = setInterval(tick, +$('interval').value);
